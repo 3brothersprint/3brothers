@@ -1,7 +1,7 @@
 <?php
 session_start();
 include '../database/db.php';
-require '../vendor/autoload.php';
+require 'vendor/autoload.php';
 
 use Picqer\Barcode\BarcodeGeneratorPNG;
 
