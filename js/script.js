@@ -176,3 +176,39 @@ document.querySelectorAll(".variant-group").forEach((group) => {
     });
   });
 });
+
+function selectVariant(btn) {
+  document
+    .querySelectorAll(".variant-btn")
+    .forEach((b) => b.classList.remove("active"));
+
+  btn.classList.add("active");
+
+  const price = parseFloat(btn.dataset.price);
+  const type = btn.dataset.type;
+
+  // Set hidden inputs
+  document.getElementById("variantPriceInput").value = price;
+  document.getElementById("paperTypeInput").value = type;
+
+  // Update price display
+  document.getElementById("productPrice").innerText =
+    "₱" +
+    price.toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+}
+
+// Sync quantity
+document.getElementById("qty").addEventListener("input", function () {
+  document.getElementById("qtyInput").value = this.value;
+});
+
+// BLOCK submit if no variant
+document.querySelector("form").addEventListener("submit", function (e) {
+  if (!document.getElementById("paperTypeInput").value) {
+    alert("Please select a variant first.");
+    e.preventDefault();
+  }
+});
