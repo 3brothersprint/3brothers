@@ -1,0 +1,161 @@
+:root {
+    --brand-gradient: linear-gradient(90deg,
+            rgba(250, 157, 117, 1) 0%,
+            rgba(245, 159, 83, 1) 100%);
+    --brand-dark: #5a2f1d;
+}
+
+/* Sidebar */
+.sidebar {
+    min-height: 100vh;
+    background: var(--brand-gradient);
+    color: #fff;
+}
+
+.logo {
+    font-weight: bold;
+}
+
+/* Sidebar links */
+.sidebar .nav-link {
+    color: #fff;
+    border-radius: 8px;
+    padding: 10px 14px;
+    transition: all 0.3s ease;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+/* Topbar */
+.topbar {
+    background: #fff;
+    padding: 15px 20px;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* Cards */
+.stat-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card h6 {
+    color: #888;
+    font-size: 14px;
+}
+
+.stat-card h3 {
+    color: var(--brand-dark);
+    font-weight: bold;
+}
+
+/* Table Card */
+.table-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+.table thead {
+    background: #f5f5f5;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .sidebar {
+        min-height: auto;
+    }
+}
+
+/* Profile dropdown */
+.profile-dropdown {
+    margin-top: 20px;
+}
+
+.profile-dropdown small {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.profile-dropdown .dropdown-menu {
+    width: 100%;
+    border-radius: 12px;
+}
+
+/* Icon alignment */
+.sidebar i {
+    font-size: 1.1rem;
+}
+
+/* Custom modal */
+.custom-modal {
+    border-radius: 18px;
+    border: none;
+}
+
+.custom-modal .modal-header {
+    border-bottom: none;
+}
+
+.custom-modal .modal-footer {
+    border-top: none;
+}
+
+/* Buttons */
+.btn-primary {
+    background: var(--brand-gradient);
+    border: none;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+/* Modal sections */
+.modal-section {
+    margin-bottom: 30px;
+}
+
+.section-title {
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: var(--brand-dark);
+}
+
+/* Upload box */
+.upload-box {
+    border: 2px dashed #ddd;
+    border-radius: 16px;
+    padding: 30px;
+    text-align: center;
+    color: #777;
+}
+
+.upload-box i {
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+/* Category list */
+.category-list .list-group-item {
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+
+/* Modal polish */
+.custom-modal {
+    border-radius: 20px;
+}
+
+.alert-success {
+    border-radius: 12px;
+    border: none;
+    background: #eaf7ef;
+    color: #256029;
+}
