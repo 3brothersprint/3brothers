@@ -21,12 +21,52 @@
 
                 <!-- Right Icons -->
                 <ul class="navbar-nav ms-lg-auto align-items-lg-center">
+                    <li class="nav-item dropdown me-2">
+                        <a class="nav-link position-relative" href="#" id="notifDropdown" role="button"
+                            data-bs-toggle="dropdown">
+
+                            <i class="bi bi-bell fs-5"></i>
+                            <span id="notifBadge"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">
+                                0
+                            </span>
+                        </a>
+
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 p-0" style="width: 320px;">
+                            <li class="px-3 py-2 fw-semibold border-bottom">Notifications</li>
+                            <div id="notifList" style="max-height:300px; overflow-y:auto;">
+                                <li class="px-3 py-3 text-muted small text-center">
+                                    No notifications
+                                </li>
+                            </div>
+                        </ul>
+                    </li>
+
+
                     <li class="nav-item me-2">
                         <a class="nav-link position-relative" href="cart.php" aria-label="Cart">
                             <i class="bi bi-cart3 fs-5"></i>
+                            <?php
+                                $cartCount = 0;
+
+                                if (isset($_SESSION['user_id'])) {
+                                    $uid = $_SESSION['user_id'];
+
+                                    $stmt = $conn->prepare("
+                                        SELECT COUNT(*) AS total_qty FROM cart WHERE user_id = ?
+                                    ");
+                                    $stmt->bind_param("i", $uid);
+                                    $stmt->execute();
+
+                                    $cartCount = $stmt->get_result()->fetch_assoc()['total_qty'] ?? 0;
+                                }
+                            ?>
+                            <?php if ($cartCount > 0): ?>
                             <span class="position-absolute top-0 badge rounded-pill bg-danger">
-                                0
+                                <?= $cartCount ?>
                             </span>
+                            <?php endif; ?>
+
                         </a>
                     </li>
 
@@ -53,13 +93,13 @@
                             </li>
 
                             <li>
-                                <a class="dropdown-item d-flex align-items-center gap-2" href="/user/profile.php">
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="profile.php">
                                     <i class="bi bi-person"></i> Profile
                                 </a>
                             </li>
 
                             <li>
-                                <a class="dropdown-item d-flex align-items-center gap-2" href="/user/orders.php">
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="orders.php">
                                     <i class="bi bi-bag"></i> My Orders
                                 </a>
                             </li>

@@ -1,0 +1,432 @@
+<?php
+session_start();
+include 'database/db.php';
+include 'includes/header.php';
+
+$order_no = $_GET['order_no'] ?? '';
+
+if (!$order_no) {
+    echo "<div class='container py-5'><div class='alert alert-danger'>Invalid request.</div></div>";
+    include '../includes/footer.php';
+    exit;
+}
+
+/* ===============================
+   FETCH PRODUCT REQUEST
+================================ */
+$stmt = $conn->prepare("
+    SELECT *
+    FROM orders
+    WHERE order_no = ? ORDER BY created_at DESC
+");
+$stmt->bind_param("s", $order_no);
+$stmt->execute();
+$request = $stmt->get_result()->fetch_assoc();
+
+if (!$request) {
+    echo "<div class='container py-5'><div class='alert alert-warning'>Order not found.</div></div>";
+    include 'includes/footer.php';
+    exit;
+}
+
+/* ===============================
+   FETCH FILES (MULTI FILE SUPPORT)
+================================ */
+$fileStmt = $conn->prepare("
+    SELECT *
+    FROM order_items
+    WHERE order_id = ?
+");
+$fileStmt->bind_param("i", $request['id']);
+$fileStmt->execute();
+$files = $fileStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+
+/* ===============================
+   FETCH STATUS LOGS
+================================ */
+$logStmt = $conn->prepare("
+    SELECT *
+    FROM order_logs
+    WHERE order_id = ?
+    ORDER BY created_at DESC
+");
+$logStmt->bind_param("i", $request['id']);
+$logStmt->execute();
+$logs = $logStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+
+?>
+
+<div class="container py-5">
+    <h4 class="fw-bold mb-4">📦 Track Print Order</h4>
+
+    <!-- ORDER INFO -->
+    <div class="card shadow-sm rounded-4 mb-4">
+        <div class="card-body">
+            <div class="row align-items-end">
+
+                <!-- ORDER NO -->
+                <div class="col-md-3 mb-3">
+                    <div class="text-uppercase text-muted small fw-semibold">
+                        Order No
+                    </div>
+                    <div class="fs-5 fw-bold">
+                        <?= htmlspecialchars($request['order_no']) ?>
+                    </div>
+                </div>
+
+                <!-- ORDER DATE -->
+                <div class="col-md-3 mb-3">
+                    <div class="text-uppercase text-muted small fw-semibold">
+                        Order Date
+                    </div>
+                    <div class="fs-5">
+                        <?= date('M d, Y · h:i A', strtotime($request['created_at'])) ?>
+                    </div>
+                </div>
+
+                <!-- SHIPPING METHOD -->
+                <div class="col-md-3 mb-3">
+                    <div class="text-uppercase text-muted small fw-semibold">
+                        Shipping Method
+                    </div>
+                    <div class="fs-5 fw-semibold">
+                        <?= strtoupper(str_replace('_', ' ', htmlspecialchars($request['delivery_type'] ?? ''))) ?>
+                    </div>
+                </div>
+
+                <!-- PRICE -->
+                <div class="col-md-3 mb-3">
+                    <div class="text-uppercase text-muted small fw-semibold">
+                        Price
+                    </div>
+
+                    <?php if (!empty($request['total_amount']) && $request['total_amount'] > 0): ?>
+                    <div class="fs-4 fw-bold text-success">
+                        ₱<?= number_format($request['total_amount'], 2) ?>
+                    </div>
+                    <?php else: ?>
+                    <div class="fs-5 fw-semibold text-warning">
+                        Processing
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+            </div>
+
+            <?php if (!empty($request['payment_method'])): ?>
+            <span class="badge bg-success">
+                Paid via <?= strtoupper(str_replace('_', ' ', htmlspecialchars($request['payment_method']))) ?>
+            </span>
+            <?php endif; ?>
+        </div>
+    </div>
+
+
+    <!-- FILE LIST -->
+    <div class="card shadow-sm rounded-4 mb-4">
+        <div class="card-body">
+            <h6 class="fw-bold mb-3">📦 Order Items</h6>
+
+            <ul class="list-group list-group-flush">
+                <?php if (!empty($files)): ?>
+                <?php foreach ($files as $file): ?>
+                <li class="list-group-item px-0">
+                    <div class="d-flex align-items-start gap-3">
+
+                        <!-- Product Image -->
+                        <img src="<?= htmlspecialchars($file['product_image']) ?>"
+                            alt="<?= htmlspecialchars($file['product_name']) ?>" class="border rounded" width="60"
+                            height="60">
+
+                        <!-- Product Info -->
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold">
+                                <?= htmlspecialchars($file['product_name']) ?>
+                            </div>
+
+                            <div class="text-muted small">
+                                Variant: <?= htmlspecialchars($file['variant']) ?>
+                            </div>
+
+                            <div class="text-muted small">
+                                Qty: <?= (int)$file['quantity'] ?>
+                            </div>
+                        </div>
+
+                        <!-- Price -->
+                        <div class="text-end">
+                            <div class="fw-semibold text-danger">
+                                ₱<?= number_format($file['subtotal'], 2) ?>
+                            </div>
+                            <small class="text-muted">
+                                ₱<?= number_format($file['price'], 2) ?> each
+                            </small>
+                        </div>
+
+                    </div>
+                </li>
+                <?php endforeach; ?>
+                <?php else: ?>
+                <li class="list-group-item text-muted text-center py-4">
+                    No order items found
+                </li>
+                <?php endif; ?>
+            </ul>
+        </div>
+    </div>
+
+    <?php
+    /* ===============================
+   STATUS STEPS (SHOPEE STYLE)
+================================ */
+$steps = [
+    'Order Placed'           => 'Order Placed',
+    'To Ship'           => 'To Ship',
+    'To Transit'           => 'To Transit',
+    'Out for Delivery'          => 'Out for Delivery',
+    'Delivered'  => 'Delivered',
+    'Cancelled'         => 'Cancelled'
+];
+
+$currentStatus = trim($request['status']); // normalize
+$stepKeys = array_keys($steps);
+
+/* SAFELY GET CURRENT INDEX */
+$currentIndex = array_search($currentStatus, $stepKeys, true);
+
+if ($currentStatus === 'Cancelled') {
+    $progressPercent = 100;
+    $progressColor   = 'bg-danger';
+} elseif ($currentIndex === false) {
+    // fallback if status is unexpected
+    $progressPercent = 0;
+    $progressColor   = 'bg-secondary';
+} else {
+    $totalSteps = count($stepKeys) - 1;
+    $progressPercent = ($currentIndex / $totalSteps) * 100;
+}
+
+?>
+
+    <div class="card shadow-sm rounded-4 mb-4">
+        <div class="card-body">
+            <h6 class="fw-bold mb-4">🚚 Order Status</h6>
+
+            <div class="tracker-wrapper position-relative">
+
+                <div class="tracker-line bg-light">
+                    <div class="tracker-line-progress"
+                        style="width: <?= $progressPercent ?>%; background: var(--brand-gradient);">
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between text-center position-relative">
+                    <?php foreach ($steps as $key => $label): ?>
+                    <?php
+                    $keyIndex = array_search($key, $stepKeys, true);
+
+                    $active = (
+                        $currentStatus === 'Cancelled'
+                            ? $key === 'Cancelled'
+                            : ($currentIndex !== false && $keyIndex !== false && $keyIndex <= $currentIndex)
+                    );
+                ?>
+                    <div class="flex-fill tracker-step">
+                        <div class="tracker-circle <?= $active ? 'active' : '' ?>">
+                            <?= $active ? '✔' : '' ?>
+                        </div>
+                        <small class="<?= $active ? 'fw-bold' : 'text-muted' ?>">
+                            <?= $label ?>
+                        </small>
+                    </div>
+                    <?php endforeach; ?>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="card shadow-sm rounded-4">
+        <div class="card-body">
+            <h6 class="fw-bold mb-3">🕒 Order Timeline</h6>
+
+            <ul class="timeline">
+                <?php foreach ($logs as $log): ?>
+                <li class="timeline-item active">
+                    <div class="timeline-time">
+                        <div><?= date('M d, Y', strtotime($log['created_at'])) ?></div>
+                        <div><?= date('h:i A', strtotime($log['created_at'])) ?></div>
+                    </div>
+
+                    <div class="timeline-dot">
+                        <span class="dot"></span>
+                    </div>
+
+                    <div class="timeline-content">
+                        <strong><?= htmlspecialchars($log['status']) ?></strong>
+
+                        <?php if (!empty($log['remarks'])): ?>
+                        <div class="text-muted small mt-1">
+                            <?= nl2br(htmlspecialchars($log['remarks'])) ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- STYLES -->
+<style>
+.tracker-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 6px;
+    color: white;
+}
+
+.tracker-circle.active {
+    background: var(--brand-gradient);
+}
+
+.timeline {
+    list-style: none;
+    padding-left: 0;
+}
+
+.timeline li {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.dot {
+    width: 12px;
+    height: 12px;
+    background: #adb5bd;
+    border-radius: 50%;
+    margin-top: 6px;
+}
+
+.dot.active {
+    background: var(--brand-gradient);
+}
+
+/* ===== SHOPEE STYLE TRACKER ===== */
+.tracker-wrapper {
+    position: relative;
+    padding-top: 20px;
+}
+
+.tracker-line {
+    position: absolute;
+    top: 35px;
+    left: 100px;
+    right: 100px;
+    height: 4px;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.tracker-line-progress {
+    height: 100%;
+    transition: width 0.4s ease;
+}
+
+.tracker-circle {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 6px;
+    z-index: 1;
+}
+
+.tracker-circle.active {
+    background: var(--brand-gradient);
+    color: #fff;
+}
+
+.timeline {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.timeline-item {
+    display: grid;
+    grid-template-columns: 90px 30px 1fr;
+    column-gap: 10px;
+    position: relative;
+    padding-bottom: 24px;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+/* TIME (LEFT) */
+.timeline-time {
+    font-size: 0.8rem;
+    color: #6c757d;
+    text-align: right;
+    line-height: 1.3;
+}
+
+/* DOT + LINE (CENTER) */
+.timeline-dot {
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.timeline-dot::before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    width: 2px;
+    height: 250%;
+    background: #dee2e6;
+}
+
+.timeline-item:last-child .timeline-dot::before {
+    display: none;
+}
+
+.dot {
+    width: 12px;
+    height: 12px;
+    background: var(--brand-gradient);
+    border-radius: 50%;
+    margin-top: 2px;
+    z-index: 1;
+}
+
+/* CONTENT (RIGHT) */
+.timeline-content {
+    padding-bottom: 6px;
+}
+
+.timeline-content strong {
+    display: block;
+    font-size: 0.95rem;
+}
+</style>
+
+<?php include 'includes/footer.php'; ?>

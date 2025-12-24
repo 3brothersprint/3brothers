@@ -2,7 +2,7 @@
 session_start();
 
 if (empty($_POST['type']) || empty($_POST['price'])) {
-    header('Location: product-details.php?id=' . $_POST['product_id']);
+    header('Location: ../product-details.php?id=' . $_POST['product_id']);
     exit;
 }
 
@@ -16,7 +16,7 @@ $product = [
 
 if (isset($_POST['add_to_cart'])) {
     $_SESSION['cart'][] = $product;
-    header('Location: cart.php');
+    header('Location: ../cart.php');
     exit;
 }
 

@@ -124,21 +124,36 @@ $typeLabel = $typeRow['type'] ?? 'Variant';
                         <label class="form-label">Quantity</label>
                         <input type="number" class="form-control" min="1" value="1" id="qty">
                     </div>
+
                 </div>
                 <div class="d-flex flex-wrap gap-3">
 
                     <!-- ADD TO CART -->
-                    <form action="cart-action.php" method="POST">
+                    <!-- ADD TO CART -->
+                    <form action="cart/cart-action.php" method="POST" class="variant-form">
+
                         <input type="hidden" name="action" value="add_to_cart">
 
                         <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
                         <input type="hidden" name="name" value="<?= htmlspecialchars($product['name']) ?>">
+                        <?php
+                            $imgStmt = $conn->prepare("
+                                SELECT image
+                                FROM product_images
+                                WHERE product_id = ? AND sort_order = 0
+                                LIMIT 1
+                            ");
+                            $imgStmt->bind_param("i", $product['id']);
+                            $imgStmt->execute();
+                            $productImage = $imgStmt->get_result()->fetch_assoc()['image'] ?? 'placeholder.png';
+                        ?>
                         <input type="hidden" name="image"
-                            value="<?= $images->fetch_assoc()['image'] ?? 'placeholder.png' ?>">
+                            value="admin/products/uploads/<?= htmlspecialchars($productImage) ?>">
 
-                        <input type="hidden" name="type" id="paperTypeInput">
-                        <input type="hidden" name="price" id="variantPriceInput">
-                        <input type="hidden" name="qty" id="qtyInput" value="1">
+                        <input type="hidden" name="type">
+                        <input type="hidden" name="price">
+                        <input type="hidden" name="qty" value="1">
+
 
                         <button type="submit" class="btn btn-brand px-4">
                             <i class="bi bi-cart-plus me-2"></i>Add to Cart
@@ -146,23 +161,21 @@ $typeLabel = $typeRow['type'] ?? 'Variant';
                     </form>
 
                     <!-- BUY NOW -->
-                    <form action="cart-action.php" method="POST">
-                        <input type="hidden" name="action" value="buy_now">
+                    <form action="buynow/buy-now.php" method="POST" class="variant-form">
 
                         <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
                         <input type="hidden" name="name" value="<?= htmlspecialchars($product['name']) ?>">
                         <input type="hidden" name="image"
-                            value="<?= $images->fetch_assoc()['image'] ?? 'placeholder.png' ?>">
+                            value="admin/products/uploads/<?= htmlspecialchars($productImage) ?>">
 
-                        <input type="hidden" name="type" id="paperTypeInput">
-                        <input type="hidden" name="price" id="variantPriceInput">
-                        <input type="hidden" name="qty" id="qtyInput" value="1">
+                        <input type="hidden" name="type">
+                        <input type="hidden" name="price">
+                        <input type="hidden" name="qty" value="1">
 
                         <button type="submit" class="btn btn-dark px-4">
-                            <i class="bi bi-bag-check me-2"></i>Buy Now
+                            <i class="bi bi-bag-check me-2"></i> Buy Now
                         </button>
                     </form>
-
                 </div>
 
 

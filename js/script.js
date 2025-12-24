@@ -1,214 +1,203 @@
-/* ===============================
-   CUSTOM SELECT
-================================ */
-document.querySelectorAll(".custom-select").forEach((select) => {
-  const button = select.querySelector(".custom-select-btn");
-  const options = select.querySelector(".custom-select-options");
-  const hiddenInput = document.getElementById(select.dataset.target);
+document.addEventListener("DOMContentLoaded", () => {
+  let currentStep = 0;
 
-  button.addEventListener("click", (e) => {
-    e.stopPropagation();
+  const steps = document.querySelectorAll(".wizard-step");
+  const nextBtn = document.getElementById("nextBtn");
+  const prevBtn = document.getElementById("prevBtn");
 
-    document.querySelectorAll(".custom-select").forEach((s) => {
-      if (s !== select) s.classList.remove("open");
+  /* ================= STEP CONTROL ================= */
+  const indicators = document.querySelectorAll(".wizard-steps .step");
+  const progress = document.querySelector(".wizard-progress");
+  const progressColors = [
+    "#f9a36b", // Step 1 → Step 2
+    "#4e8cff", // Step 2 → Step 3
+    "#9b6dff", // Step 3 → Step 4
+  ];
+
+  // Build progress segments ONCE
+  progress.innerHTML = "";
+  for (let i = 0; i < indicators.length - 1; i++) {
+    const seg = document.createElement("span");
+    progress.appendChild(seg);
+  }
+  const segments = progress.querySelectorAll("span");
+  function showStep(index) {
+    /* ================= STEP CONTENT ================= */
+    steps.forEach((step, i) => {
+      step.classList.toggle("active", i === index);
     });
 
-    select.classList.toggle("open");
-  });
+    /* ================= STEP INDICATORS ================= */
+    indicators.forEach((step, i) => {
+      step.classList.remove("active", "completed");
 
-  options.querySelectorAll("li").forEach((option) => {
-    option.addEventListener("click", () => {
-      button.childNodes[0].textContent = option.textContent;
-      hiddenInput.value = option.dataset.value;
-      select.classList.remove("open");
+      const circle = step.querySelector(".step-circle");
+
+      if (i < index) {
+        step.classList.add("completed");
+        circle.innerHTML = "✓";
+      } else if (i === index) {
+        step.classList.add("active");
+        circle.innerHTML = i + 1;
+      } else {
+        circle.innerHTML = i + 1;
+      }
     });
-  });
-});
 
-// Close custom select on outside click
-document.addEventListener("click", () => {
-  document
-    .querySelectorAll(".custom-select")
-    .forEach((s) => s.classList.remove("open"));
-});
+    /* ================= PROGRESS BAR ================= */
+    segments.forEach((seg, i) => {
+      if (i < index) {
+        seg.classList.add("active");
+        seg.style.setProperty(
+          "--seg-color",
+          progressColors[i] || progressColors[0]
+        );
+      } else {
+        seg.classList.remove("active");
+        seg.style.removeProperty("--seg-color");
+      }
+    });
 
-/* ===============================
-   WIZARD LOGIC
-================================ */
-let currentStep = 0;
-const steps = document.querySelectorAll(".wizard-step");
-const progressSteps = document.querySelectorAll(".wizard-steps .step");
-const nextBtn = document.getElementById("nextBtn");
-const prevBtn = document.getElementById("prevBtn");
-const form = document.getElementById("printWizardForm");
+    /* ================= BUTTON VISIBILITY ================= */
+    prevBtn.style.display = index === 0 ? "none" : "inline-block";
+    nextBtn.innerText = index === steps.length - 1 ? "Submit" : "Next";
+  }
 
-function validateStep(stepIndex) {
-  const step = steps[stepIndex];
-  const requiredFields = step.querySelectorAll("[required]");
-
-  for (let field of requiredFields) {
-    if (!field.value) {
-      field.classList.add("is-invalid");
-      return false;
+  function validateStep(stepIndex) {
+    const inputs = steps[stepIndex].querySelectorAll("input, select, textarea");
+    for (let input of inputs) {
+      if (input.hasAttribute("required") && !input.value) {
+        input.classList.add("is-invalid");
+        return false;
+      }
+      input.classList.remove("is-invalid");
     }
-    field.classList.remove("is-invalid");
+    return true;
   }
-  return true;
-}
 
-function updateSummary() {
-  document.getElementById("summaryService").textContent =
-    document.getElementById("printType").value || "—";
+  nextBtn.addEventListener("click", () => {
+    if (!validateStep(currentStep)) return;
 
-  document.getElementById("summaryPaper").textContent =
-    form.querySelector('select[name="paper"]')?.value || "—";
+    if (currentStep === steps.length - 1) {
+      document.getElementById("printWizardForm").submit();
+      return;
+    }
 
-  document.getElementById("summaryQty").textContent =
-    form.querySelector('input[type="number"]')?.value || "—";
-
-  document.getElementById("summaryColor").textContent =
-    form.querySelector('select[name="color"]')?.value || "—";
-
-  document.getElementById("summaryNotes").textContent =
-    form.querySelector("textarea")?.value || "—";
-}
-
-function updateWizard() {
-  steps.forEach((step, index) => {
-    step.classList.toggle("active", index === currentStep);
-  });
-
-  progressSteps.forEach((step, index) => {
-    step.classList.remove("active", "completed", "locked");
-
-    if (index < currentStep) step.classList.add("completed");
-    if (index === currentStep) step.classList.add("active");
-    if (index > currentStep) step.classList.add("locked");
-  });
-
-  prevBtn.style.display = currentStep === 0 ? "none" : "inline-block";
-  nextBtn.textContent = currentStep === steps.length - 1 ? "Submit" : "Next";
-
-  if (currentStep === 3) updateSummary();
-}
-
-nextBtn.addEventListener("click", () => {
-  if (!validateStep(currentStep)) return;
-
-  if (currentStep < steps.length - 1) {
     currentStep++;
-    updateWizard();
-  } else {
-    form.submit();
-  }
-});
-
-prevBtn.addEventListener("click", () => {
-  if (currentStep > 0) {
-    currentStep--;
-    updateWizard();
-  }
-});
-
-updateWizard();
-const uploadZone = document.getElementById("uploadZone");
-const fileInput = document.getElementById("fileInput");
-const filePreview = document.getElementById("filePreview");
-const fileName = document.getElementById("fileName");
-const fileSize = document.getElementById("fileSize");
-const removeFile = document.getElementById("removeFile");
-
-// Drag events
-["dragenter", "dragover"].forEach((event) => {
-  uploadZone.addEventListener(event, (e) => {
-    e.preventDefault();
-    uploadZone.classList.add("dragover");
+    fillSummary();
+    showStep(currentStep);
   });
-});
 
-["dragleave", "drop"].forEach((event) => {
-  uploadZone.addEventListener(event, (e) => {
-    e.preventDefault();
-    uploadZone.classList.remove("dragover");
+  prevBtn.addEventListener("click", () => {
+    if (currentStep > 0) {
+      currentStep--;
+      showStep(currentStep);
+    }
   });
-});
 
-// Drop file
-uploadZone.addEventListener("drop", (e) => {
-  const file = e.dataTransfer.files[0];
-  if (file) handleFile(file);
-});
+  showStep(currentStep);
 
-// Click upload
-fileInput.addEventListener("change", () => {
-  if (fileInput.files[0]) handleFile(fileInput.files[0]);
-});
+  /* ================= CUSTOM SELECT ================= */
+  document.querySelectorAll(".custom-select").forEach((select) => {
+    const btn = select.querySelector(".custom-select-btn");
+    const options = select.querySelector(".custom-select-options");
+    const hiddenInput = document.getElementById(select.dataset.target);
 
-// Handle file
-function handleFile(file) {
-  fileInput.files = new DataTransfer().files;
-  const dt = new DataTransfer();
-  dt.items.add(file);
-  fileInput.files = dt.files;
-
-  fileName.textContent = file.name;
-  fileSize.textContent = (file.size / 1024 / 1024).toFixed(2) + " MB";
-  filePreview.classList.remove("d-none");
-}
-
-// Remove file
-removeFile.addEventListener("click", () => {
-  fileInput.value = "";
-  filePreview.classList.add("d-none");
-});
-
-document.querySelectorAll(".variant-group").forEach((group) => {
-  const input = group.nextElementSibling;
-
-  group.querySelectorAll(".variant-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      group
-        .querySelectorAll(".variant-btn")
-        .forEach((b) => b.classList.remove("active"));
+      options.classList.toggle("show");
+    });
 
-      btn.classList.add("active");
-      input.value = btn.textContent.trim();
+    options.querySelectorAll("li").forEach((option) => {
+      option.addEventListener("click", () => {
+        btn.innerText = option.innerText;
+        hiddenInput.value = option.dataset.value;
+        options.classList.remove("show");
+      });
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!select.contains(e.target)) options.classList.remove("show");
     });
   });
-});
 
-function selectVariant(btn) {
-  document
-    .querySelectorAll(".variant-btn")
-    .forEach((b) => b.classList.remove("active"));
+  /* ================= FILE UPLOAD ================= */
+  const fileInput = document.getElementById("fileInput");
+  const filePreview = document.getElementById("filePreview");
+  const uploadZone = document.getElementById("uploadZone");
 
-  btn.classList.add("active");
+  let selectedFiles = [];
 
-  const price = parseFloat(btn.dataset.price);
-  const type = btn.dataset.type;
+  /* ================= FILE SELECT ================= */
+  fileInput.addEventListener("change", () => {
+    const files = Array.from(fileInput.files);
 
-  // Set hidden inputs
-  document.getElementById("variantPriceInput").value = price;
-  document.getElementById("paperTypeInput").value = type;
+    // Limit to 5 files total
+    if (selectedFiles.length + files.length > 5) {
+      alert("You can upload a maximum of 5 files only.");
+      fileInput.value = "";
+      return;
+    }
 
-  // Update price display
-  document.getElementById("productPrice").innerText =
-    "₱" +
-    price.toLocaleString("en-PH", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+    files.forEach((file) => {
+      selectedFiles.push(file);
     });
-}
 
-// Sync quantity
-document.getElementById("qty").addEventListener("input", function () {
-  document.getElementById("qtyInput").value = this.value;
-});
+    renderPreview();
+    syncFileInput();
+  });
 
-// BLOCK submit if no variant
-document.querySelector("form").addEventListener("submit", function (e) {
-  if (!document.getElementById("paperTypeInput").value) {
-    alert("Please select a variant first.");
-    e.preventDefault();
+  /* ================= PREVIEW ================= */
+  function renderPreview() {
+    filePreview.innerHTML = "";
+    filePreview.classList.toggle("d-none", selectedFiles.length === 0);
+
+    selectedFiles.forEach((file, index) => {
+      const item = document.createElement("div");
+      item.className =
+        "d-flex align-items-center justify-content-between border rounded p-2 mb-2";
+
+      item.innerHTML = `
+      <div>
+        <strong>${file.name}</strong>
+        <div class="text-muted small">${(file.size / 1024).toFixed(1)} KB</div>
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-danger">Remove</button>
+    `;
+
+      item.querySelector("button").addEventListener("click", () => {
+        selectedFiles.splice(index, 1);
+        renderPreview();
+        syncFileInput();
+      });
+
+      filePreview.appendChild(item);
+    });
+  }
+
+  /* ================= KEEP INPUT IN SYNC ================= */
+  function syncFileInput() {
+    const dataTransfer = new DataTransfer();
+    selectedFiles.forEach((file) => dataTransfer.items.add(file));
+    fileInput.files = dataTransfer.files;
+  }
+
+  /* ================= CLICK ZONE ================= */
+  uploadZone.addEventListener("click", () => fileInput.click());
+
+  /* ================= SUMMARY ================= */
+  function fillSummary() {
+    document.getElementById("summaryService").innerText =
+      document.getElementById("printType").value || "—";
+
+    const selects = steps[1].querySelectorAll("select");
+    const copies = steps[1].querySelector("input[type='number']");
+    const notes = steps[2].querySelector("textarea");
+
+    document.getElementById("summaryPaper").innerText =
+      selects[0]?.value || "—";
+    document.getElementById("summaryQty").innerText = copies?.value || "—";
+    document.getElementById("summaryColor").innerText =
+      selects[1]?.value || "—";
+    document.getElementById("summaryNotes").innerText = notes?.value || "—";
   }
 });

@@ -1,5 +1,5 @@
 <?php
-require "database/db.php";
+include "database/db.php";
 
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_token'])) {
 

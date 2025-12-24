@@ -30,12 +30,19 @@ if ($user['otp_blocked_until'] && strtotime($user['otp_blocked_until']) > time()
 
 /* TIMER */
 $remaining = 0;
-if ($user['otp_expires']) {
-    $remaining = max(0, strtotime($user['otp_expires']) - time());
-    if ($remaining === 0 && empty($error)) {
+
+if (!empty($user['otp_expires'])) {
+    $expires = strtotime($user['otp_expires']);
+    $now = time();
+
+    if ($expires > $now) {
+        $remaining = $expires - $now;
+    } else {
         $error = "OTP expired. Please request a new code.";
     }
 }
+
+
 
 function maskEmail($email) {
     [$name, $domain] = explode("@", $email);
@@ -49,26 +56,28 @@ if (isset($_POST['verify']) && empty($error)) {
     $code = trim($_POST['code']);
 
     if (
-        $code === $user['verify_code'] &&
-        strtotime($user['otp_expires']) > time()
-    ) {
+    !empty($user['verify_code']) &&
+    hash_equals($user['verify_code'], $code) &&
+    !empty($user['otp_expires']) &&
+    strtotime($user['otp_expires']) > time()
+)
+ {
+    mysqli_query($conn, "
+        UPDATE users SET
+            is_verified = 1,
+            verify_code = NULL,
+            otp_expires = NULL,
+            otp_attempts = 0,
+            otp_blocked_until = NULL
+        WHERE email='$email'
+    ");
 
-        mysqli_query($conn, "
-            UPDATE users SET
-                is_verified = 1,
-                verify_code = NULL,
-                otp_expires = NULL,
-                otp_attempts = 0,
-                otp_blocked_until = NULL
-            WHERE email='$email'
-        ");
-
-        unset($_SESSION['verify_email']);
-        $_SESSION['success'] = "Account verified. Please login.";
-        header("Location: auth.php");
-        exit();
-
-    } else {
+    unset($_SESSION['verify_email']);
+    $_SESSION['success'] = "Account verified. Please login.";
+    header("Location: auth.php");
+    exit();
+}
+ else {
 
         $attempts = (int)$user['otp_attempts'] + 1;
 
@@ -209,6 +218,18 @@ if (isset($_POST['verify']) && empty($error)) {
     const resend = document.getElementById("resend");
     const card = document.querySelector(".card");
 
+    function buildOTP() {
+        let code = '';
+        let filled = true;
+
+        inputs.forEach(i => {
+            if (!i.value) filled = false;
+            code += i.value;
+        });
+
+        hidden.value = code;
+        button.disabled = !filled;
+    }
     /* OTP INPUT */
     inputs.forEach((input, i) => {
 
@@ -229,18 +250,7 @@ if (isset($_POST['verify']) && empty($error)) {
 
     });
 
-    function buildOTP() {
-        let code = '';
-        let filled = true;
 
-        inputs.forEach(i => {
-            if (!i.value) filled = false;
-            code += i.value;
-        });
-
-        hidden.value = code;
-        button.disabled = !filled;
-    }
 
     /* TIMER */
     let timeLeft = <?= (int)$remaining ?>;
@@ -249,7 +259,9 @@ if (isset($_POST['verify']) && empty($error)) {
     function tick() {
         if (timeLeft <= 0) {
             timerEl.textContent = "Expired";
+            timerEl.parentElement.classList.add("expired");
             resend.style.pointerEvents = "auto";
+            clearInterval(timerInterval);
             button.disabled = true;
             return;
         }
@@ -261,7 +273,8 @@ if (isset($_POST['verify']) && empty($error)) {
     }
 
     tick();
-    setInterval(tick, 1000);
+    const timerInterval = setInterval(tick, 1000);
+
 
     /* RESEND */
     resend.onclick = e => {

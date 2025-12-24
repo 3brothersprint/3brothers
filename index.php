@@ -1,5 +1,8 @@
 <?php 
+session_start();
 include 'includes/header.php'; 
+$uid = $_SESSION['user_id'];
+if (!isset($_SESSION['user_id']));
 ?>
 <!-- Carousel -->
 <div id="mainCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel">
@@ -107,10 +110,12 @@ include 'includes/header.php';
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
-            <form id="printWizardForm">
+            <form action="print/index.php" method="POST" enctype="multipart/form-data" id="printWizardForm">
                 <div class="modal-body p-4">
                     <!-- Wizard Progress Steps -->
                     <div class="wizard-steps mb-4">
+                        <div class="wizard-progress"></div>
+
                         <div class="step active">
                             <div class="step-circle">1</div>
                             <span>Service</span>
@@ -129,22 +134,22 @@ include 'includes/header.php';
                         </div>
                     </div>
 
+
                     <div class="wizard-step active">
                         <div class="wizard-step-inner">
                             <h5 class="mb-3">Step 1: Choose Printing Services</h5>
 
-                            <div class="custom-select" data-target="printType">
-                                <button type="button" class="custom-select-btn">
-                                    Select service
-                                    <span class="arrow"></span>
-                                </button>
-                                <ul class="custom-select-options">
-                                    <li data-value="Print">Print</li>
-                                    <li data-value="Xerox">Xerox</li>
-                                </ul>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Printing Service</label>
+                                <select class="form-select" name="print_type" id="printType" required>
+                                    <option value="" disabled selected>
+                                        Select service
+                                    </option>
+                                    <option value="Print">Print</option>
+                                    <option value="Xerox">Xerox</option>
+                                </select>
                             </div>
 
-                            <input type="hidden" id="printType" name="print_type" required />
                         </div>
                     </div>
 
@@ -155,21 +160,27 @@ include 'includes/header.php';
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <label class="form-label">Paper Size</label>
-                                    <select class="form-select" required>
+                                    <select class="form-select" name="paper_size" id="paperSize" required>
+                                        <option value="" disabled selected>
+                                            Select Paper Size
+                                        </option>
                                         <option>A4</option>
-                                        <option>Letter</option>
-                                        <option>Legal (8.5 x 13")</option>
+                                        <option>Letter (Short)</option>
+                                        <option>Legal (8.5 x 13") (Long)</option>
                                     </select>
                                 </div>
 
                                 <div class="col-md-4">
                                     <label class="form-label">Copies</label>
-                                    <input type="number" class="form-control" min="1" required />
+                                    <input type="number" class="form-control" name="copies" min="1" required>
                                 </div>
 
                                 <div class="col-md-4">
                                     <label class="form-label">Color</label>
-                                    <select class="form-select">
+                                    <select class="form-select" name="color">
+                                        <option value="" disabled selected>
+                                            Select Color
+                                        </option>
                                         <option>Black & White</option>
                                         <option>Color</option>
                                     </select>
@@ -183,8 +194,8 @@ include 'includes/header.php';
                             <h5 class="mb-3">Step 3: Upload File & Notes</h5>
 
                             <div class="upload-zone" id="uploadZone">
-                                <input type="file" id="fileInput" class="file-input" accept=".pdf,.doc,.docx,.jpg,.png"
-                                    required />
+                                <input type="file" id="fileInput" name="files[]" class="file-input"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple required />
 
                                 <div class="upload-content text-center">
                                     <div class="upload-icon">📤</div>
@@ -195,20 +206,9 @@ include 'includes/header.php';
                                 </div>
                             </div>
 
-                            <div class="file-preview mt-3 d-none" id="filePreview">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <strong id="fileName"></strong>
-                                        <div class="text-muted small" id="fileSize"></div>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" id="removeFile">
-                                        Remove
-                                    </button>
-                                </div>
-                            </div>
-
-                            <textarea class="form-control mt-3" rows="3"
-                                placeholder="Additional instructions..."></textarea>
+                            <div class="file-preview mt-3 d-none" id="filePreview"></div>
+                            <textarea class="form-control mt-3" rows="3" placeholder="Additional instructions..."
+                                name="notes"></textarea>
                         </div>
                     </div>
 
@@ -324,4 +324,5 @@ $products = $conn->query("
         </div>
     </div>
 </section>
+
 <?php include 'includes/footer.php'; ?>

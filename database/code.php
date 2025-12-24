@@ -20,18 +20,40 @@ if (isset($_POST['submit'])) {
     }
 
     $hash = password_hash($pass, PASSWORD_BCRYPT);
-    $code = rand(100000, 999999);
+$code = random_int(100000, 999999);
 
-    $check = mysqli_query($conn, "SELECT * FROM users WHERE email='$email'");
-    if (mysqli_num_rows($check) > 0) {
-        $_SESSION['error'] = "Email already exists";
-        header("Location: ../auth/auth.php");
-        exit();
-    }
+/* CHECK EMAIL FIRST */
+$check = mysqli_query($conn, "SELECT id FROM users WHERE email='$email'");
+if (mysqli_num_rows($check) > 0) {
+    $_SESSION['error'] = "Email already exists";
+    header("Location: ../auth/auth.php");
+    exit();
+}
 
-    mysqli_query($conn, "INSERT INTO users 
-        (account_no, full_name, email, password, verify_code) 
-        VALUES ('$account_no', '$name','$email','$hash','$code')");
+/* INSERT USER WITH OTP + EXPIRY */
+mysqli_query($conn, "
+    INSERT INTO users (
+        account_no,
+        full_name,
+        email,
+        password,
+        verify_code,
+        otp_expires,
+        otp_attempts,
+        otp_blocked_until,
+        is_verified
+    ) VALUES (
+        '$account_no',
+        '$name',
+        '$email',
+        '$hash',
+        '$code',
+        DATE_ADD(NOW(), INTERVAL 5 MINUTE),
+        0,
+        NULL,
+        0
+    )
+");
 
     // SEND EMAIL
     $mail = new PHPMailer(true);

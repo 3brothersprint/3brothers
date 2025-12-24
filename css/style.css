@@ -3,6 +3,10 @@
             rgba(250, 157, 117, 1) 0%,
             rgba(245, 159, 83, 1) 100%);
     --brand-dark: #5a2f1d;
+    --wizard-active: #f9a36b;
+    /* orange from header */
+    --wizard-muted: #d9d9d9;
+    --wizard-text-muted: #b5b5b5;
 }
 
 body {
@@ -482,22 +486,33 @@ footer {
    Wizard Step Progress
    =============================== */
 
-.wizard-steps {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: relative;
-}
-
-/* Wizard Step Card */
 .wizard-step {
     display: none;
-    animation: fadeSlide 0.35s ease;
 }
 
 .wizard-step.active {
     display: block;
 }
+
+/* Wizard container */
+.wizard-steps {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 28px 0;
+}
+
+.upload-zone {
+    border: 2px dashed #ddd;
+    padding: 30px;
+    cursor: pointer;
+}
+
+.upload-zone:hover {
+    border-color: var(--bs-primary);
+}
+
 
 /* Unified step container */
 .wizard-step-inner {
@@ -531,71 +546,98 @@ footer {
 }
 
 
-/* Progress line */
+/* Base gray line */
 .wizard-steps::before {
     content: "";
     position: absolute;
-    top: 20px;
+    top: 45px;
+    left: 10%;
+    right: 10%;
+    height: 3px;
+    background: #e0e0e0;
+    border-radius: 10px;
+    z-index: 1;
+}
+
+/* Segmented progress */
+.wizard-progress {
+    position: absolute;
+    top: 45px;
     left: 10%;
     right: 10%;
     height: 4px;
-    background: #e5e5e5;
-    z-index: 0;
-    border-radius: 10px;
+    display: flex;
+    gap: 6px;
+    z-index: 2;
+    pointer-events: none;
 }
 
-/* Step */
-.step {
-    text-align: center;
-    z-index: 1;
+/* Each segment */
+.wizard-progress span {
     flex: 1;
+    background: #e0e0e0;
+    border-radius: 10px;
+    transition: background 0.4s ease;
 }
 
+/* Active segment */
+.wizard-progress span.active {
+    background: var(--brand-gradient);
+    /* progress color */
+}
+
+.step {
+    position: relative;
+    z-index: 3;
+    flex: 1;
+    text-align: center;
+}
+
+/* Circle base */
+.step-circle {
+    width: 38px;
+    height: 38px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: var(--wizard-muted);
+    color: #fff;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s ease, transform 0.3s ease;
+}
+
+/* Labels */
 .step span {
     display: block;
     margin-top: 8px;
     font-size: 0.75rem;
-    font-weight: 600;
-    color: #999;
+    color: var(--wizard-text-muted);
 }
 
-/* Circle */
-.step-circle {
-    width: 40px;
-    height: 40px;
-    margin: 0 auto;
-    border-radius: 50%;
-    background: #e5e5e5;
-    color: #777;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    transition: all 0.3s ease;
-}
 
-/* Active step */
+/* Active */
 .step.active .step-circle {
-    background: var(--brand-gradient);
-    color: #fff;
+    background: var(--wizard-active);
 }
 
+/* Text color */
+.step.completed span,
+/* Active label */
 .step.active span {
-    color: var(--brand-dark);
+    color: #333;
 }
 
-/* Completed step */
+/* Completed */
 .step.completed .step-circle {
-    background: var(--brand-gradient);
-    color: #fff;
-    opacity: 0.9;
+    background: var(--wizard-active);
+    font-size: 18px;
+    transform: scale(1.05);
 }
 
-.step.completed span {
-    color: var(--brand-dark);
-}
 
-/* Mobile tweak */
+/* Mobile */
 @media (max-width: 576px) {
     .step span {
         font-size: 0.65rem;
@@ -940,4 +982,16 @@ footer {
     background: var(--brand);
     color: #d47407d7;
     border-color: var(--brand);
+}
+
+.modal-content {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .12);
+}
+
+.modal-header {
+    border-bottom: 0;
+}
+
+.modal-footer {
+    border-top: 0;
 }
