@@ -20,6 +20,7 @@ $paper_size = $_POST['paper_size'] ?? '';
 $copies     = $_POST['copies'] ?? 1;
 $color      = $_POST['color'] ?? '';
 $notes      = $_POST['notes'] ?? '';
+$delivery_address = $_POST['delivery_address'] ?? '';
 
 /* ===============================
    SAVE REQUEST FIRST
@@ -28,12 +29,24 @@ $user_id = $_SESSION['user_id'] ?? 0;
 
 $stmt = $conn->prepare("
     INSERT INTO print_requests
-    (request_no, user_id, full_name, print_type, paper_size, copies, color, notes, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Order Placed')
+    (
+        request_no,
+        user_id,
+        full_name,
+        print_type,
+        paper_size,
+        copies,
+        color,
+        notes,
+        delivery_address,
+        status
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Order Placed')
 ");
 
+
 $stmt->bind_param(
-    "sisssiss",
+    "sisssisss",
     $request_no,
     $user_id,
     $full_name,
@@ -41,8 +54,10 @@ $stmt->bind_param(
     $paper_size,
     $copies,
     $color,
-    $notes
+    $notes,
+    $delivery_address
 );
+
 
 $stmt->execute();
 $request_id = $stmt->insert_id;

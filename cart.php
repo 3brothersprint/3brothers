@@ -15,18 +15,14 @@ if ($user_id) {
 }
 ?>
 
-
-<!-- Cart Content -->
-<!-- Cart Content -->
 <section class="py-5">
     <div class="container">
         <div class="row g-4">
 
-            <!-- Cart Items -->
+            <!-- CART ITEMS -->
             <div class="col-lg-8">
 
                 <?php if (empty($cart)): ?>
-                <!-- Empty State -->
                 <div class="text-center py-5">
                     <i class="bi bi-cart-x fs-1 text-muted"></i>
                     <p class="mt-3">Your cart is empty</p>
@@ -34,31 +30,50 @@ if ($user_id) {
                 <?php else: ?>
 
                 <?php foreach ($cart as $item): 
-                    $itemTotal = $item['price'] * $item['quantity'];
-                    $subtotal += $itemTotal;
-                ?>
-                <!-- Cart Item -->
+                        $itemTotal = $item['price'] * $item['quantity'];
+                        $subtotal += $itemTotal;
+                    ?>
                 <div class="card border-0 shadow-sm mb-3">
                     <div class="card-body">
                         <div class="row align-items-center gy-3">
 
-                            <!-- Product Image -->
+                            <!-- IMAGE -->
                             <div class="col-4 col-md-2">
                                 <img src="<?= htmlspecialchars($item['product_image']) ?>" class="img-fluid rounded"
                                     alt="<?= htmlspecialchars($item['product_name']) ?>">
                             </div>
 
-                            <!-- Product Info -->
+                            <!-- INFO -->
                             <div class="col-8 col-md-4">
                                 <h6 class="mb-1 fw-semibold">
                                     <?= htmlspecialchars($item['product_name']) ?>
                                 </h6>
+
+                                <!-- VARIANTS -->
                                 <small class="text-muted">
-                                    <?= htmlspecialchars($item['variant_type']) ?>
+                                    <?php
+                                        if (!empty($item['variant_type'])) {
+                                            $variants = json_decode($item['variant_type'], true);
+
+                                            if (is_array($variants)) {
+                                                foreach ($variants as $type => $value) {
+
+                                                    // Supports both formats
+                                                    if (is_array($value) && isset($value['value'])) {
+                                                        $value = $value['value'];
+                                                    }
+
+                                                    echo "<div class='small text-muted'>
+                                                            <strong>$type:</strong> " . htmlspecialchars($value) . "
+                                                          </div>";
+                                                }
+                                            }
+                                        }
+                                        ?>
                                 </small>
                             </div>
 
-                            <!-- Quantity -->
+                            <!-- QUANTITY -->
                             <div class="col-6 col-md-3">
                                 <form method="POST" action="cart/update-cart.php" class="input-group input-group-sm">
                                     <input type="hidden" name="cart_id" value="<?= $item['id'] ?>">
@@ -72,12 +87,12 @@ if ($user_id) {
                                 </form>
                             </div>
 
-                            <!-- Price -->
+                            <!-- PRICE -->
                             <div class="col-4 col-md-2 text-md-end">
                                 <strong>₱<?= number_format($itemTotal, 2) ?></strong>
                             </div>
 
-                            <!-- Remove -->
+                            <!-- REMOVE -->
                             <div class="col-2 col-md-1 text-end">
                                 <form method="POST" action="cart/remove-cart.php">
                                     <input type="hidden" name="cart_id" value="<?= $item['id'] ?>">
@@ -94,10 +109,17 @@ if ($user_id) {
                 <?php endif; ?>
 
             </div>
-
-            <!-- Order Summary -->
+            <style>
+            /* Push sticky order summary behind navbar dropdowns */
+            .order-summary-card {
+                position: sticky;
+                top: 90px;
+                z-index: 1;
+            }
+            </style>
+            <!-- ORDER SUMMARY -->
             <div class="col-lg-4">
-                <div class="card border-0 shadow-sm sticky-top" style="top: 90px">
+                <div class="card border-0 shadow-sm sticky-top order-summary-card" style="top: 90px">
                     <div class="card-body">
                         <h5 class="fw-semibold mb-3">Order Summary</h5>
 

@@ -43,8 +43,3 @@ function addSpec() {
     `
   );
 }
-// AUTO SKU GENERATION
-document.getElementById("productName").addEventListener("input", () => {
-  const rand = Math.floor(100000 + Math.random() * 900000);
-  document.getElementById("sku").value = "SKU-" + rand;
-});

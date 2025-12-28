@@ -119,7 +119,25 @@ if ($result->num_rows > 0) {
                                 </div>
 
                                 <div class="text-muted small">
-                                    <?= htmlspecialchars($item['variant_type']) ?>
+                                    <?php
+                                        $variants = json_decode($item['variant_type'], true);
+
+                                        if (is_array($variants)) {
+                                            foreach ($variants as $type => $data) {
+
+                                                // NEW format: { value, price }
+                                                if (is_array($data) && isset($data['value'])) {
+                                                    echo "<div>{$type}: {$data['value']}</div>";
+
+                                                // OLD format: "A4"
+                                                } else {
+                                                    echo "<div>{$type}: {$data}</div>";
+                                                }
+                                            }
+                                        } else {
+                                            echo htmlspecialchars($item['variant_type']);
+                                        }
+                                    ?>
                                 </div>
 
                                 <div class="text-muted small mt-1">
@@ -284,39 +302,17 @@ $isSameDayAllowed = in_array($cityName, $allowedSameDayCities);
                     </div>
                 </div>
             </div>
-            <script>
-            let selectedPayment = 'COD';
-            const modal = new bootstrap.Modal(document.getElementById('walletConfirmModal'));
-
-            document.querySelectorAll('input[name="payment"]').forEach(radio => {
-                radio.addEventListener('change', function() {
-                    if (this.value === 'GCASH' || this.value === 'PAYMAYA') {
-                        selectedPayment = this.value;
-                        document.getElementById('walletName').innerText =
-                            this.value === 'GCASH' ? 'GCash' : 'PayMaya';
-                        modal.show();
-                    } else {
-                        selectedPayment = 'COD';
-                    }
-                });
-            });
-
-            // Cancel → revert to COD
-            document.getElementById('cancelWallet').addEventListener('click', () => {
-                modal.hide();
-                document.querySelector('input[value="cod"]').checked = true;
-                selectedPayment = 'COD';
-            });
-
-            // Confirm → keep wallet
-            document.getElementById('confirmWallet').addEventListener('click', () => {
-                modal.hide();
-            });
-            </script>
-
+            <style>
+            /* Push sticky order summary behind navbar dropdowns */
+            .order-summary-card {
+                position: sticky;
+                top: 90px;
+                z-index: 1;
+            }
+            </style>
             <!-- Right: Order Summary -->
             <div class="col-lg-4">
-                <div class="card border-0 shadow-sm sticky-top" style="top: 90px">
+                <div class="card border-0 shadow-sm sticky-top order-summary-card" style="top: 90px">
                     <div class="card-body">
                         <h5 class="fw-semibold mb-3">Order Summary</h5>
 
@@ -329,18 +325,18 @@ $isSameDayAllowed = in_array($cityName, $allowedSameDayCities);
 
                             <li class="list-group-item d-flex justify-content-between">
                                 <span>Shipping Fee</span>
-                                <strong id="shippingFee">₱38.00</strong>
+                                <strong id="shippingFee">₱0.00</strong>
+
                             </li>
                             <li class="list-group-item d-flex justify-content-between d-none" id="discountRow">
                                 <span>Voucher Discount</span>
                                 <strong class="text-success" id="discountAmount">-₱0.00</strong>
                             </li>
-                            <script>
-                            const subtotalAmount = <?= number_format($subtotal, 2, '.', '') ?>;
-                            </script>
+
                             <li class="list-group-item d-flex justify-content-between fs-6">
                                 <strong>Total</strong>
-                                <strong class="text-danger" id="grandTotal">₱88.00</strong>
+                                <strong class="text-danger" id="grandTotal">₱0.00</strong>
+
                             </li>
                         </ul>
 
@@ -358,35 +354,6 @@ $isSameDayAllowed = in_array($cityName, $allowedSameDayCities);
                         <div id="appliedVoucher" class="text-success small d-none mt-1">
                             Voucher applied
                         </div>
-                        <script>
-                        const appliedVoucher = document.getElementById('appliedVoucher');
-
-                        if (discount > 0) {
-                            appliedVoucher.classList.remove('d-none');
-                        } else {
-                            appliedVoucher.classList.add('d-none');
-                        }
-                        </script>
-                        <script>
-                        document.querySelector('.btn-brand').addEventListener('click', () => {
-                            document.getElementById('delivery_type').value =
-                                document.querySelector('input[name="delivery"]:checked').value;
-
-                            document.getElementById('payment_method').value =
-                                document.querySelector('input[name="payment"]:checked').value;
-
-                            document.getElementById('shipping_fee').value =
-                                document.getElementById('shippingFee').innerText.replace(/[₱,]/g, '');
-
-                            document.getElementById('discount').value =
-                                document.getElementById('discountAmount').innerText.replace(/[₱,\- ]/g, '');
-
-                            document.getElementById('total_amount').value =
-                                document.getElementById('grandTotal').innerText.replace(/[₱,]/g, '');
-
-                            document.getElementById('checkoutForm').submit();
-                        });
-                        </script>
 
                         <form method="POST" action="place_order.php" id="checkoutForm">
                             <input type="hidden" name="delivery_type" id="delivery_type">
@@ -407,31 +374,6 @@ $isSameDayAllowed = in_array($cityName, $allowedSameDayCities);
                                 Secure checkout · SSL encrypted
                             </small>
                         </form>
-                        <script>
-                        document.getElementById('checkoutForm').addEventListener('submit', function(e) {
-                            e.preventDefault(); // STOP default submit
-
-                            const delivery = document.querySelector('input[name="delivery"]:checked');
-                            const payment = document.querySelector('input[name="payment"]:checked');
-
-                            if (!delivery || !payment) {
-                                alert('Please select delivery and payment method.');
-                                return;
-                            }
-
-                            // ✅ RAW VALUES (NOT TEXT)
-                            const shipping = shippingRates[delivery.value];
-                            const total = calculateTotal(); // we’ll add this below
-
-                            document.getElementById('delivery_type').value = delivery.value;
-                            document.getElementById('payment_method').value = payment.value;
-                            document.getElementById('shipping_fee').value = shipping;
-                            document.getElementById('discount').value = currentDiscount;
-                            document.getElementById('total_amount').value = total;
-
-                            this.submit(); // ✅ NOW submit
-                        });
-                        </script>
                     </div>
                 </div>
             </div>
@@ -439,85 +381,6 @@ $isSameDayAllowed = in_array($cityName, $allowedSameDayCities);
         </div>
     </div>
 </section>
-<script>
-let currentDiscount = 0;
-let currentShipping = 38;
-let currentTotal = 0;
-
-const shippingRates = {
-    STANDARD: 38,
-    EXPRESS: 99,
-    SAME_DAY: 149
-};
-
-let selectedVoucher = null;
-
-function formatPeso(amount) {
-    return '₱' + amount.toFixed(2);
-}
-
-function calculateTotal() {
-    return Math.max(subtotalAmount + currentShipping - currentDiscount, 0);
-}
-
-function updateSummary() {
-    const delivery = document.querySelector('input[name="delivery"]:checked').value;
-
-    currentShipping = shippingRates[delivery];
-    currentDiscount = 0;
-
-    if (selectedVoucher) {
-        const type = selectedVoucher.dataset.type;
-        const value = parseFloat(selectedVoucher.dataset.value);
-        const minSpend = parseFloat(selectedVoucher.dataset.min || 0);
-
-        if (subtotalAmount >= minSpend) {
-            if (type === 'fixed') {
-                currentDiscount = value;
-            }
-
-            if (type === 'shipping' && delivery !== 'SAME_DAY') {
-                currentDiscount = Math.min(value, currentShipping);
-            }
-        }
-    }
-
-    currentTotal = calculateTotal();
-
-    // UI update only
-    document.getElementById('shippingFee').innerText = formatPeso(currentShipping);
-    document.getElementById('grandTotal').innerText = formatPeso(currentTotal);
-
-    if (currentDiscount > 0) {
-        document.getElementById('discountRow').classList.remove('d-none');
-        document.getElementById('discountAmount').innerText =
-            '- ' + formatPeso(currentDiscount);
-        document.getElementById('appliedVoucher').classList.remove('d-none');
-    } else {
-        document.getElementById('discountRow').classList.add('d-none');
-        document.getElementById('appliedVoucher').classList.add('d-none');
-    }
-}
-
-
-// Delivery change
-document.querySelectorAll('input[name="delivery"]').forEach(radio => {
-    radio.addEventListener('change', updateSummary);
-});
-
-// Voucher select
-document.querySelectorAll('input[name="voucher"]').forEach(voucher => {
-    voucher.addEventListener('change', function() {
-        selectedVoucher = this;
-    });
-});
-
-// Apply voucher button
-document.querySelector('#voucherModal .btn-danger').addEventListener('click', updateSummary);
-
-updateSummary();
-</script>
-
 <!-- Voucher Modal -->
 <div class="modal fade" id="voucherModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
@@ -574,4 +437,122 @@ updateSummary();
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    /* ===============================
+       CHECKOUT STATE
+    ================================ */
+    const subtotalAmount = <?= number_format($subtotal, 2, '.', '') ?>;
+
+    let currentShipping = 38;
+    let currentDiscount = 0;
+    let currentTotal = 0;
+    let selectedVoucher = null;
+
+    /* ===============================
+       SHIPPING RATES
+    ================================ */
+    const shippingRates = {
+        STANDARD: 38,
+        EXPRESS: 99,
+        SAME_DAY: 149
+    };
+
+    /* ===============================
+       HELPERS
+    ================================ */
+    function peso(amount) {
+        return '₱' + amount.toFixed(2);
+    }
+
+    /* ===============================
+       MAIN CALCULATION
+    ================================ */
+    function updateSummary() {
+        const delivery =
+            document.querySelector('input[name="delivery"]:checked')?.value || 'STANDARD';
+
+        currentShipping = shippingRates[delivery] ?? 38;
+        currentDiscount = 0;
+
+        if (selectedVoucher) {
+            const type = selectedVoucher.dataset.type;
+            const value = parseFloat(selectedVoucher.dataset.value || 0);
+            const min = parseFloat(selectedVoucher.dataset.min || 0);
+
+            if (subtotalAmount >= min) {
+                if (type === 'fixed') {
+                    currentDiscount = value;
+                }
+
+                if (type === 'shipping' && delivery !== 'SAME_DAY') {
+                    currentDiscount = Math.min(value, currentShipping);
+                }
+            }
+        }
+
+        currentTotal = Math.max(
+            subtotalAmount + currentShipping - currentDiscount,
+            0
+        );
+
+        document.getElementById('shippingFee').textContent = peso(currentShipping);
+        document.getElementById('grandTotal').textContent = peso(currentTotal);
+
+        if (currentDiscount > 0) {
+            document.getElementById('discountRow').classList.remove('d-none');
+            document.getElementById('discountAmount').textContent =
+                '- ' + peso(currentDiscount);
+            document.getElementById('appliedVoucher').classList.remove('d-none');
+        } else {
+            document.getElementById('discountRow').classList.add('d-none');
+            document.getElementById('appliedVoucher').classList.add('d-none');
+        }
+    }
+
+    /* ===============================
+       EVENTS
+    ================================ */
+    document.querySelectorAll('input[name="delivery"]').forEach(radio => {
+        radio.addEventListener('change', updateSummary);
+    });
+
+    document.querySelectorAll('input[name="voucher"]').forEach(voucher => {
+        voucher.addEventListener('change', function() {
+            selectedVoucher = this;
+            updateSummary(); // 🔥 IMMEDIATE APPLY
+        });
+    });
+
+
+    const applyVoucherBtn = document.querySelector('#voucherModal .btn-danger');
+    if (applyVoucherBtn) {
+        applyVoucherBtn.addEventListener('click', updateSummary);
+    }
+
+    updateSummary();
+
+    /* ===============================
+       PLACE ORDER (FIXED)
+    ================================ */
+    document.getElementById('placeOrderBtn').addEventListener('click', (e) => {
+        e.preventDefault(); // 🔥 REQUIRED
+
+        document.getElementById('delivery_type').value =
+            document.querySelector('input[name="delivery"]:checked').value;
+
+        document.getElementById('payment_method').value =
+            document.querySelector('input[name="payment"]:checked').value;
+
+        document.getElementById('shipping_fee').value = currentShipping;
+        document.getElementById('discount').value = currentDiscount;
+        document.getElementById('total_amount').value = currentTotal;
+
+        document.getElementById('checkoutForm').submit();
+    });
+
+});
+</script>
+
 <?php include 'includes/footer.php'; ?>

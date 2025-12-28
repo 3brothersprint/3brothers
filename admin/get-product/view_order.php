@@ -104,10 +104,11 @@ $allowedStatuses = [
                 <label class="form-label fw-semibold">Remark</label>
                 <select class="form-select" id="orderRemark">
                     <option value="">-- Select Remark --</option>
+                    <option value="Your order has been prepared">Your order has been prepared</option>
                     <option value="Order has been packed">Order has been packed</option>
                     <option value="Handed to courier">Handed to courier</option>
                     <option value="Out for delivery">Out for delivery</option>
-                    <option value="Successfully delivered">Successfully delivered</option>
+                    <option value="Order has been delivered">Order has been delivered</option>
                     <option value="Order cancelled by admin">Order cancelled by admin</option>
                 </select>
             </div>
@@ -142,8 +143,29 @@ $allowedStatuses = [
                 <div>
                     <div class="fw-semibold"><?= htmlspecialchars($item['product_name']) ?></div>
                     <small class="text-muted">
-                        Variant: <?= htmlspecialchars($item['variant']) ?> × <?= (int)$item['quantity'] ?>
+                        Variant:
+                        <?php
+        if (!empty($item['variant'])) {
+            $variants = json_decode($item['variant'], true);
+
+            if (is_array($variants)) {
+                $variantTexts = [];
+
+                foreach ($variants as $type => $data) {
+                    if (is_array($data) && isset($data['value'])) {
+                        $variantTexts[] = $type . ': ' . $data['value'];
+                    } elseif (is_string($data)) {
+                        $variantTexts[] = $type . ': ' . $data;
+                    }
+                }
+
+                echo htmlspecialchars(implode(', ', $variantTexts));
+            }
+        }
+    ?>
+                        × <?= (int)$item['quantity'] ?>
                     </small>
+
                 </div>
                 <strong>₱<?= number_format($item['subtotal'], 2) ?></strong>
             </li>

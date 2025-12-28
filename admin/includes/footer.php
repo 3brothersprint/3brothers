@@ -4,7 +4,15 @@
 <!-- CUSTOM JS -->
 <script src="js/index.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
+<script>
+if (new URLSearchParams(window.location.search).get('success')) {
+    Swal.fire({
+        icon: 'success',
+        title: 'Tracking Assigned!',
+        text: 'Orders are now ready for shipment'
+    });
+}
+</script>
 </body>
 
 </html>

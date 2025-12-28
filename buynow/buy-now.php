@@ -9,10 +9,24 @@ if (!$user_id) {
     exit;
 }
 
-// Clean previous checkout
+$product_id  = (int)$_POST['product_id'];
+$name        = $_POST['name'];
+$image       = $_POST['image'];
+$qty         = max(1, (int)$_POST['qty']);
+$unitPrice   = (float)$_POST['unit_price'];
+$totalPrice  = (float)$_POST['total_price'];
+$variantData = $_POST['variant_data'] ?? '{}';
+
+$variantJson = json_encode(json_decode($variantData, true));
+
+/* ===============================
+   RESET CHECKOUT
+================================ */
 $conn->query("DELETE FROM checkout WHERE user_id = $user_id");
 
-// Create checkout
+/* ===============================
+   CREATE CHECKOUT
+================================ */
 $stmt = $conn->prepare("
     INSERT INTO checkout (user_id, source)
     VALUES (?, 'buy_now')
@@ -22,7 +36,9 @@ $stmt->execute();
 
 $checkout_id = $conn->insert_id;
 
-// Insert checkout item
+/* ===============================
+   INSERT ITEM
+================================ */
 $item = $conn->prepare("
     INSERT INTO checkout_items
     (checkout_id, product_id, product_name, product_image, variant_type, price, quantity)
@@ -32,12 +48,12 @@ $item = $conn->prepare("
 $item->bind_param(
     "iisssdi",
     $checkout_id,
-    $_POST['product_id'],
-    $_POST['name'],
-    $_POST['image'],
-    $_POST['type'],
-    $_POST['price'],
-    $_POST['qty']
+    $product_id,
+    $name,
+    $image,
+    $variantJson,
+    $totalPrice,
+    $qty
 );
 
 $item->execute();

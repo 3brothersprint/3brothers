@@ -100,6 +100,15 @@ $statuses = [
         </div>
     </div>
     <hr>
+    <div class="col-md-12">
+        <strong>
+            <i class="bi bi-geo-alt-fill text-danger"></i>
+            Delivery Address
+        </strong>
+        <div class="border rounded p-3 mt-2 bg-light">
+            <?= nl2br(htmlspecialchars($order['delivery_address'] ?: '—')) ?>
+        </div>
+    </div>
 
     <div class="row g-3 mt-2">
         <div class="col-md-6">

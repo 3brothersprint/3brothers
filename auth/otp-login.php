@@ -114,7 +114,7 @@ if (isset($_POST['verify']) && empty($error)) {
     <link rel="stylesheet" href="../css/style.css" />
 </head>
 
-<body class="bg-light">
+<body class="bg-light" style="background: var(--brand-gradient);">
 
     <section class="min-vh-100 d-flex align-items-center justify-content-center">
         <div class="card shadow-lg border-0 p-4" style="max-width: 420px">

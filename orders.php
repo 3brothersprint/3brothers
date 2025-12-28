@@ -187,8 +187,27 @@ if ($user_id <= 0) {
                             </div>
 
                             <div class="text-muted small">
-                                <?= htmlspecialchars($item['variant']) ?>
+                                <?php
+        if (!empty($item['variant'])) {
+            $variants = json_decode($item['variant'], true);
+
+            if (is_array($variants)) {
+                foreach ($variants as $type => $data) {
+
+                    // { "Size": { "value": "A4" } }
+                    if (is_array($data) && isset($data['value'])) {
+                        echo "<div>{$type}: " . htmlspecialchars($data['value']) . "</div>";
+
+                    // { "Size": "A4" }
+                    } elseif (is_string($data)) {
+                        echo "<div>{$type}: " . htmlspecialchars($data) . "</div>";
+                    }
+                }
+            }
+        }
+    ?>
                             </div>
+
 
                             <div class="text-muted small">
                                 x<?= (int)$item['quantity'] ?>
@@ -222,6 +241,32 @@ if ($user_id <= 0) {
                             class="btn btn-outline-primary btn-sm">
                             View Details
                         </a>
+                        <?php
+                            $reviewCheck = $conn->prepare("
+                                SELECT 1 
+                                FROM product_reviews
+                                WHERE order_id = ? AND user_id = ?
+                                LIMIT 1
+                            ");
+                            $reviewCheck->bind_param("ii", $order['id'], $user_id);
+                            $reviewCheck->execute();
+                            $hasReviewed = $reviewCheck->get_result()->num_rows > 0;
+                        ?>
+                        <?php if ($order['status'] === 'Delivered'): ?>
+
+                        <?php if ($hasReviewed): ?>
+                        <button class="btn btn-outline-secondary btn-sm" disabled>
+                            ✔ Reviewed
+                        </button>
+                        <?php else: ?>
+                        <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal"
+                            data-bs-target="#reviewModal<?= $order['id'] ?>">
+                            Leave Review
+                        </button>
+                        <?php endif; ?>
+
+                        <?php endif; ?>
+
 
                         <?php if ($order['status'] === 'Order Placed'): ?>
                         <button class="btn btn-outline-danger btn-sm"
@@ -233,6 +278,80 @@ if ($user_id <= 0) {
 
                 </div>
             </div>
+            <?php if ($order['status'] === 'Delivered'): ?>
+            <div class="modal fade" id="reviewModal<?= $order['id'] ?>" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <form method="POST" action="submit_review.php" class="modal-content rounded-4">
+
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold">⭐ Review Your Products</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+
+                        <div class="modal-body">
+
+                            <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
+
+                            <?php
+                $itemStmt = $conn->prepare("
+                    SELECT * FROM order_items WHERE order_id = ?
+                ");
+                $itemStmt->bind_param("i", $order['id']);
+                $itemStmt->execute();
+                $reviewItems = $itemStmt->get_result();
+
+                while ($item = $reviewItems->fetch_assoc()):
+                ?>
+
+                            <div class="border rounded-3 p-3 mb-3">
+                                <div class="d-flex gap-3 align-items-center mb-2">
+                                    <img src="<?= htmlspecialchars($item['product_image']) ?>" width="60" height="60"
+                                        class="rounded border" style="object-fit:cover">
+
+                                    <div>
+                                        <div class="fw-semibold">
+                                            <?= htmlspecialchars($item['product_name']) ?>
+                                        </div>
+                                        <div class="text-muted small">
+                                            <?= htmlspecialchars($item['variant']) ?>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- RATING -->
+                                <label class="small fw-semibold text-muted">Rating</label>
+                                <select name="rating[<?= $item['id'] ?>]" class="form-select mb-2" required>
+                                    <option value="">Select rating</option>
+                                    <option value="5">⭐⭐⭐⭐⭐ Excellent</option>
+                                    <option value="4">⭐⭐⭐⭐ Very Good</option>
+                                    <option value="3">⭐⭐⭐ Good</option>
+                                    <option value="2">⭐⭐ Fair</option>
+                                    <option value="1">⭐ Poor</option>
+                                </select>
+
+                                <!-- REVIEW -->
+                                <textarea name="review[<?= $item['id'] ?>]" class="form-control" rows="2"
+                                    placeholder="Write your review..." required></textarea>
+                            </div>
+
+                            <?php endwhile; ?>
+
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                                Cancel
+                            </button>
+
+                            <button class="btn btn-success">
+                                Submit Review
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <?php endwhile; else: ?>
 
@@ -282,5 +401,10 @@ function cancelOrder(requestId) {
     });
 }
 </script>
+<?php if (!empty($_SESSION['review_success'])): ?>
+<script>
+alert('Thank you for your review!');
+</script>
+<?php unset($_SESSION['review_success']); endif; ?>
 
 <?php include 'includes/footer.php'; ?>

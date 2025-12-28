@@ -1,5 +1,5 @@
 <!-- Footer -->
-<footer class="footer">
+<footer class="footer sticky">
     <div class="container">
         <div class="row gy-4">
             <!-- Brand -->
@@ -41,9 +41,9 @@
             <!-- Contact -->
             <div class="col-md-4 text-center text-md-end">
                 <h6 class="footer-heading">Contact Us</h6>
-                <p class="footer-text mb-1">📞 +63 900 000 0000</p>
-                <p class="footer-text mb-1">✉️ info@3brothersprint.com</p>
-                <p class="footer-text">📍 Your City, Philippines</p>
+                <p class="footer-text mb-1"><i class="bi bi-telephone"></i> +63 994 082 3693</p>
+                <p class="footer-text mb-1"><i class="bi bi-envelope"></i> 3brothersprintservices@gmail.com</p>
+                <p class="footer-text"><i class="bi bi-geo"></i> Your City, Philippines</p>
             </div>
         </div>
 
@@ -137,71 +137,71 @@ alertify.success('$_SESSION['message']');
 <?php
 }
 ?>
+<script>
+window.addEventListener("load", () => {
+    document.getElementById("pageLoader").style.display = "none";
+});
+</script>
+
 <!-- Custom JS -->
 <script src="js/script.js"></script>
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-/* ===============================
-   SINGLE SOURCE OF TRUTH
-================================ */
-let selectedVariant = null;
+let selectedVariants = {};
+const basePrice = <?= (float)$product['price'] ?>;
 
-/* ===============================
-   VARIANT CLICK
-================================ */
-window.selectVariant = function(btn) {
-    const type = btn.getAttribute('data-type');
-    const price = btn.getAttribute('data-price');
+function selectVariant(btn) {
+    const type = btn.dataset.type;
+    const value = btn.dataset.value;
+    const price = parseFloat(btn.dataset.price);
 
-    if (!type || !price) return;
-
-    selectedVariant = {
-        type,
+    selectedVariants[type] = {
+        value,
         price
     };
 
-    // UI
-    document.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('active'));
+    btn.closest('.variant-group')
+        .querySelectorAll('.variant-btn')
+        .forEach(b => b.classList.remove('active'));
+
     btn.classList.add('active');
 
-    // Price display
+    updatePrice();
+}
+
+function updatePrice() {
+    let variantTotal = 0;
+
+    Object.values(selectedVariants).forEach(v => {
+        variantTotal += v.price;
+    });
+
+    const qty = parseInt(document.getElementById('qty').value || 1);
+    const unitPrice = basePrice + variantTotal;
+    const totalPrice = unitPrice * qty;
+
+    // UI
     document.getElementById('productPrice').innerText =
-        '₱' + parseFloat(price).toFixed(2);
+        '₱' + totalPrice.toFixed(2);
 
-    // Fill ALL forms
-    document.querySelectorAll('.variant-form').forEach(form => {
-        form.querySelector('input[name="type"]').value = type;
-        form.querySelector('input[name="price"]').value = price;
-    });
-};
+    // Add to Cart
+    document.getElementById('variant_data').value =
+        JSON.stringify(selectedVariants);
+    document.getElementById('unit_price').value = unitPrice.toFixed(2);
+    document.getElementById('total_price').value = totalPrice.toFixed(2);
+    document.getElementById('qty_input').value = qty;
 
-/* ===============================
-   QUANTITY SYNC
-================================ */
-document.getElementById('qty').addEventListener('input', function() {
-    let qty = parseInt(this.value) || 1;
-    if (qty < 1) qty = 1;
+    // Buy Now
+    document.getElementById('variant_data_buy').value =
+        JSON.stringify(selectedVariants);
+    document.getElementById('unit_price_buy').value = unitPrice.toFixed(2);
+    document.getElementById('total_price_buy').value = totalPrice.toFixed(2);
+    document.getElementById('qty_input_buy').value = qty;
+}
 
-    document.querySelectorAll('.variant-form').forEach(form => {
-        form.querySelector('input[name="qty"]').value = qty;
-    });
-});
-
-/* ===============================
-   VALIDATION (FINAL)
-================================ */
-document.querySelectorAll('.variant-form').forEach(form => {
-    form.addEventListener('submit', function(e) {
-        const type = form.querySelector('input[name="type"]').value;
-        const price = form.querySelector('input[name="price"]').value;
-
-        if (!type || !price || price <= 0) {
-            e.preventDefault();
-            alert('Please select a variant first.');
-        }
-    });
-});
+// Quantity change
+document.getElementById('qty').addEventListener('input', updatePrice);
 </script>
 
 </body>

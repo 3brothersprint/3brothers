@@ -15,9 +15,15 @@ if (!$order_no) {
    FETCH PRODUCT REQUEST
 ================================ */
 $stmt = $conn->prepare("
-    SELECT *
-    FROM orders
-    WHERE order_no = ? ORDER BY created_at DESC
+    SELECT 
+        o.*,
+        ls.tracking_number,
+        ls.courier
+    FROM orders o
+    LEFT JOIN logistics_shipments ls
+        ON ls.order_id = o.id
+    WHERE o.order_no = ?
+    ORDER BY o.created_at DESC
 ");
 $stmt->bind_param("s", $order_no);
 $stmt->execute();
@@ -59,22 +65,46 @@ $logs = $logStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 ?>
 
 <div class="container py-5">
-    <h4 class="fw-bold mb-4">📦 Track Print Order</h4>
+    <h4 class="fw-bold mb-4"><i class="bi bi-box-seam"></i> Track Product Order</h4>
 
     <!-- ORDER INFO -->
     <div class="card shadow-sm rounded-4 mb-4">
         <div class="card-body">
             <div class="row align-items-end">
 
-                <!-- ORDER NO -->
+                <!-- ORDER / TRACKING INFO -->
                 <div class="col-md-3 mb-3">
                     <div class="text-uppercase text-muted small fw-semibold">
+                        <?php if (!empty($request['tracking_number']) && in_array($request['status'], [
+                        'To Transit',
+                        'Out for Delivery',
+                        'Delivered'
+                    ])): ?>
+                        Tracking No
+                        <?php else: ?>
                         Order No
+                        <?php endif; ?>
                     </div>
+
                     <div class="fs-5 fw-bold">
+                        <?php if (!empty($request['tracking_number']) && in_array($request['status'], [
+                            'To Transit',
+                            'Out for Delivery',
+                            'Delivered'
+                        ])): ?>
+                        <?= htmlspecialchars($request['tracking_number']) ?>
+                        <?php else: ?>
                         <?= htmlspecialchars($request['order_no']) ?>
+                        <?php endif; ?>
                     </div>
+
+                    <?php if (!empty($request['courier']) && !empty($request['tracking_number'])): ?>
+                    <div class="text-muted small mt-1">
+                        Courier: <strong><?= htmlspecialchars($request['courier']) ?></strong>
+                    </div>
+                    <?php endif; ?>
                 </div>
+
 
                 <!-- ORDER DATE -->
                 <div class="col-md-3 mb-3">
@@ -127,7 +157,7 @@ $logs = $logStmt->get_result()->fetch_all(MYSQLI_ASSOC);
     <!-- FILE LIST -->
     <div class="card shadow-sm rounded-4 mb-4">
         <div class="card-body">
-            <h6 class="fw-bold mb-3">📦 Order Items</h6>
+            <h6 class="fw-bold mb-3"><i class="bi bi-box-seam"></i> Order Items</h6>
 
             <ul class="list-group list-group-flush">
                 <?php if (!empty($files)): ?>
@@ -147,8 +177,27 @@ $logs = $logStmt->get_result()->fetch_all(MYSQLI_ASSOC);
                             </div>
 
                             <div class="text-muted small">
-                                Variant: <?= htmlspecialchars($file['variant']) ?>
+                                <?php
+        if (!empty($file['variant'])) {
+            $variants = json_decode($file['variant'], true);
+
+            if (is_array($variants)) {
+                foreach ($variants as $type => $data) {
+
+                    // { "Size": { "value": "A4" } }
+                    if (is_array($data) && isset($data['value'])) {
+                        echo "<div>{$type}: " . htmlspecialchars($data['value']) . "</div>";
+
+                    // { "Size": "A4" }
+                    } elseif (is_string($data)) {
+                        echo "<div>{$type}: " . htmlspecialchars($data) . "</div>";
+                    }
+                }
+            }
+        }
+    ?>
                             </div>
+
 
                             <div class="text-muted small">
                                 Qty: <?= (int)$file['quantity'] ?>
@@ -182,13 +231,32 @@ $logs = $logStmt->get_result()->fetch_all(MYSQLI_ASSOC);
    STATUS STEPS (SHOPEE STYLE)
 ================================ */
 $steps = [
-    'Order Placed'           => 'Order Placed',
-    'To Ship'           => 'To Ship',
-    'To Transit'           => 'To Transit',
-    'Out for Delivery'          => 'Out for Delivery',
-    'Delivered'  => 'Delivered',
-    'Cancelled'         => 'Cancelled'
+    'Order Placed' => [
+        'label' => 'Order Placed',
+        'icon'  => 'bi-receipt'
+    ],
+    'To Ship' => [
+        'label' => 'To Ship',
+        'icon'  => 'bi-box-seam'
+    ],
+    'To Transit' => [
+        'label' => 'To Transit',
+        'icon'  => 'bi-truck'
+    ],
+    'Out for Delivery' => [
+        'label' => 'Out for Delivery',
+        'icon'  => 'bi-truck'
+    ],
+    'Delivered' => [
+        'label' => 'Delivered',
+        'icon'  => 'bi-check-circle'
+    ],
+    'Cancelled' => [
+        'label' => 'Cancelled',
+        'icon'  => 'bi-x-circle'
+    ]
 ];
+
 
 $currentStatus = trim($request['status']); // normalize
 $stepKeys = array_keys($steps);
@@ -212,7 +280,7 @@ if ($currentStatus === 'Cancelled') {
 
     <div class="card shadow-sm rounded-4 mb-4">
         <div class="card-body">
-            <h6 class="fw-bold mb-4">🚚 Order Status</h6>
+            <h6 class="fw-bold mb-4"><i class="bi bi-truck"></i> Order Status</h6>
 
             <div class="tracker-wrapper position-relative">
 
@@ -223,61 +291,139 @@ if ($currentStatus === 'Cancelled') {
                 </div>
 
                 <div class="d-flex justify-content-between text-center position-relative">
-                    <?php foreach ($steps as $key => $label): ?>
                     <?php
-                    $keyIndex = array_search($key, $stepKeys, true);
+    $stepKeys = array_keys($steps);
+    $currentIndex = array_search($currentStatus, $stepKeys, true);
+    ?>
 
-                    $active = (
-                        $currentStatus === 'Cancelled'
-                            ? $key === 'Cancelled'
-                            : ($currentIndex !== false && $keyIndex !== false && $keyIndex <= $currentIndex)
-                    );
-                ?>
+                    <?php foreach ($steps as $key => $step): ?>
+                    <?php
+        $keyIndex = array_search($key, $stepKeys, true);
+
+        $active = (
+            $currentStatus === 'Cancelled'
+                ? $key === 'Cancelled'
+                : ($currentIndex !== false && $keyIndex !== false && $keyIndex <= $currentIndex)
+        );
+
+        $completed = $active && $keyIndex < $currentIndex;
+        $isOutForDelivery = ($key === 'Out for Delivery' && $active);
+        ?>
                     <div class="flex-fill tracker-step">
                         <div class="tracker-circle <?= $active ? 'active' : '' ?>">
-                            <?= $active ? '✔' : '' ?>
+
+                            <?php if ($completed): ?>
+                            ✔
+                            <?php else: ?>
+                            <i class="bi <?= $step['icon'] ?> <?= $isOutForDelivery ? 'truck-move' : '' ?>"></i>
+                            <?php endif; ?>
+
                         </div>
+
                         <small class="<?= $active ? 'fw-bold' : 'text-muted' ?>">
-                            <?= $label ?>
+                            <?= $step['label'] ?>
                         </small>
                     </div>
                     <?php endforeach; ?>
-
                 </div>
+                <style>
+                .tracker-circle {
+                    width: 38px;
+                    height: 38px;
+                    border-radius: 50%;
+                    border: 2px solid #ddd;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.1rem;
+                    background: #fff;
+                }
+
+                .tracker-circle.active {
+                    background: var(--brand-gradient);
+                    color: #fff;
+                    border-color: transparent;
+                }
+
+                /* 🚚 Truck animation */
+                .truck-move {
+                    animation: truckBounce 1s infinite ease-in-out;
+                }
+
+                @keyframes truckBounce {
+
+                    0%,
+                    100% {
+                        transform: translateX(0);
+                    }
+
+                    50% {
+                        transform: translateX(4px);
+                    }
+                }
+                </style>
 
             </div>
         </div>
     </div>
+    <?php
+$groupedLogs = [];
+
+foreach ($logs as $log) {
+    $status = $log['status'];
+    $groupedLogs[$status][] = $log;
+}
+$lastStatus = null;
+?>
 
     <!-- TIMELINE -->
     <div class="card shadow-sm rounded-4">
         <div class="card-body">
-            <h6 class="fw-bold mb-3">🕒 Order Timeline</h6>
-
+            <h6 class="fw-bold mb-3"><i class="bi bi-clock-history"></i> Order Timeline</h6>
             <ul class="timeline">
+
                 <?php foreach ($logs as $log): ?>
+
+                <?php
+    $isNewStatus = $log['status'] !== $lastStatus;
+    ?>
+
                 <li class="timeline-item active">
+
+                    <!-- TIME -->
                     <div class="timeline-time">
                         <div><?= date('M d, Y', strtotime($log['created_at'])) ?></div>
                         <div><?= date('h:i A', strtotime($log['created_at'])) ?></div>
                     </div>
 
+                    <!-- DOT -->
                     <div class="timeline-dot">
                         <span class="dot"></span>
                     </div>
 
+                    <!-- CONTENT -->
                     <div class="timeline-content">
+
+                        <?php if ($isNewStatus): ?>
                         <strong><?= htmlspecialchars($log['status']) ?></strong>
+                        <?php endif; ?>
 
                         <?php if (!empty($log['remarks'])): ?>
                         <div class="text-muted small mt-1">
                             <?= nl2br(htmlspecialchars($log['remarks'])) ?>
                         </div>
                         <?php endif; ?>
+
                     </div>
+
                 </li>
+
+                <?php $lastStatus = $log['status']; ?>
+
                 <?php endforeach; ?>
+
             </ul>
+
 
         </div>
     </div>

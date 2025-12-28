@@ -122,11 +122,18 @@ $itemStmt = $conn->prepare("
         subtotal
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ");
+$stockStmt = $conn->prepare("
+    UPDATE products
+    SET stock = stock - ?
+    WHERE id = ? AND stock >= ?
+");
+$conn->begin_transaction();
 
 while ($item = $items->fetch_assoc()) {
 
     $itemSubtotal = $item['price'] * $item['quantity'];
 
+    // Insert order item
     $itemStmt->bind_param(
         "iisssdid",
         $order_id,
@@ -138,8 +145,20 @@ while ($item = $items->fetch_assoc()) {
         $item['quantity'],
         $itemSubtotal
     );
-
     $itemStmt->execute();
+
+    /* ===============================
+       DEDUCT PRODUCT STOCK
+       =============================== */
+    $qty = (int)$item['quantity'];
+    $pid = (int)$item['product_id'];
+
+    $stockStmt->bind_param("iii", $qty, $pid, $qty);
+    $stockStmt->execute();
+
+    if ($stockStmt->affected_rows === 0) {
+        die("Insufficient stock for product ID: $pid");
+    }
 }
 
 /* ===============================
@@ -169,6 +188,8 @@ $remarks = 'Order successfully created by customer';
 
 $logStmt->bind_param("iss", $order_id, $status, $remarks);
 $logStmt->execute();
+
+$conn->commit();
 
 
 /* ===============================

@@ -188,7 +188,7 @@ function deleteOrder(orderId) {
         cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('print/delete_order.php', {
+            fetch('get-product/delete_order.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'

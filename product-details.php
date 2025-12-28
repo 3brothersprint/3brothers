@@ -18,6 +18,8 @@ $images = $conn->query("
     WHERE product_id = $id 
     ORDER BY sort_order ASC
 ");
+$images->data_seek(0);
+$firstImage = $images->fetch_assoc()['image'] ?? 'placeholder.png';
 
 /* VARIANTS */
 $variants = $conn->query("
@@ -68,28 +70,32 @@ $specs = $conn->query("
                     <span class="ms-2 text-muted">(24 reviews)</span>
                 </div>
                 <?php 
-$variantsResult = $conn->query("
-    SELECT * FROM product_variants 
-    WHERE product_id = $id
-");
+                    $variantsResult = $conn->query("
+                        SELECT * FROM product_variants 
+                        WHERE product_id = $id
+                    ");
 
-$variants = [];
-while ($row = $variantsResult->fetch_assoc()) {
-    $variants[] = $row;
-}
-$prices = array_column($variants, 'price');
+                    $variants = [];
+                    while ($row = $variantsResult->fetch_assoc()) {
+                        $variants[] = $row;
+                    }
+                    $prices = array_column($variants, 'price');
 
-$minPrice = min($prices);
-$maxPrice = max($prices);
-$typeRow = $conn->query("
-    SELECT type 
-    FROM product_variants 
-    WHERE product_id = $id
-    LIMIT 1
-")->fetch_assoc();
+                    $minPrice = min($prices);
+                    $maxPrice = max($prices);
+                    $typeRow = $conn->query("
+                        SELECT type 
+                        FROM product_variants 
+                        WHERE product_id = $id
+                        LIMIT 1
+                    ")->fetch_assoc();
 
-$typeLabel = $typeRow['type'] ?? 'Variant';
+                    $typeLabel = $typeRow['type'] ?? 'Variant';
+                    $groupedVariants = [];
 
+                    foreach ($variants as $v) {
+                        $groupedVariants[$v['type']][] = $v;
+                    }
                 ?>
                 <!-- Price -->
                 <h3 class="text-brand fw-bold mb-3" id="productPrice">
@@ -103,21 +109,24 @@ $typeLabel = $typeRow['type'] ?? 'Variant';
                 </p>
                 <!-- Options -->
                 <div class="row g-3 mb-4">
+
+                    <?php foreach ($groupedVariants as $type => $values): ?>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold"><label class="form-label fw-semibold">
-                                <?= htmlspecialchars($typeLabel) ?>
-                            </label>
+                        <label class="form-label fw-semibold">
+                            <?= htmlspecialchars($type) ?>
                         </label>
 
                         <div class="variant-group">
-                            <?php foreach ($variants as $v): ?>
+                            <?php foreach ($values as $v): ?>
                             <button type="button" class="variant-btn" data-price="<?= (float)$v['price'] ?>"
-                                data-type="<?= htmlspecialchars($v['value']) ?>" onclick="selectVariant(this)">
+                                data-type="<?= htmlspecialchars($type) ?>"
+                                data-value="<?= htmlspecialchars($v['value']) ?>" onclick="selectVariant(this)">
                                 <?= htmlspecialchars($v['value']) ?>
                             </button>
                             <?php endforeach; ?>
                         </div>
                     </div>
+                    <?php endforeach; ?>
 
                     <!-- QUANTITY -->
                     <div class="col-md-4 mb-2">
@@ -126,34 +135,22 @@ $typeLabel = $typeRow['type'] ?? 'Variant';
                     </div>
 
                 </div>
-                <div class="d-flex flex-wrap gap-3">
 
+                <div class="d-flex flex-wrap gap-3">
                     <!-- ADD TO CART -->
-                    <!-- ADD TO CART -->
-                    <form action="cart/cart-action.php" method="POST" class="variant-form">
+                    <form action="cart/cart-action.php" method="POST" class="variant-form" id="addToCartForm">
 
                         <input type="hidden" name="action" value="add_to_cart">
-
                         <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
                         <input type="hidden" name="name" value="<?= htmlspecialchars($product['name']) ?>">
-                        <?php
-                            $imgStmt = $conn->prepare("
-                                SELECT image
-                                FROM product_images
-                                WHERE product_id = ? AND sort_order = 0
-                                LIMIT 1
-                            ");
-                            $imgStmt->bind_param("i", $product['id']);
-                            $imgStmt->execute();
-                            $productImage = $imgStmt->get_result()->fetch_assoc()['image'] ?? 'placeholder.png';
-                        ?>
                         <input type="hidden" name="image"
-                            value="admin/products/uploads/<?= htmlspecialchars($productImage) ?>">
+                            value="admin/products/uploads/<?= htmlspecialchars($firstImage) ?>">
 
-                        <input type="hidden" name="type">
-                        <input type="hidden" name="price">
-                        <input type="hidden" name="qty" value="1">
-
+                        <!-- 🔥 MULTI VARIANT SUPPORT -->
+                        <input type="hidden" name="variant_data" id="variant_data">
+                        <input type="hidden" name="unit_price" id="unit_price">
+                        <input type="hidden" name="total_price" id="total_price">
+                        <input type="hidden" name="qty" id="qty_input" value="1">
 
                         <button type="submit" class="btn btn-brand px-4">
                             <i class="bi bi-cart-plus me-2"></i>Add to Cart
@@ -161,21 +158,24 @@ $typeLabel = $typeRow['type'] ?? 'Variant';
                     </form>
 
                     <!-- BUY NOW -->
-                    <form action="buynow/buy-now.php" method="POST" class="variant-form">
+                    <form action="buynow/buy-now.php" method="POST" class="variant-form" id="buyNowForm">
 
                         <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
                         <input type="hidden" name="name" value="<?= htmlspecialchars($product['name']) ?>">
                         <input type="hidden" name="image"
-                            value="admin/products/uploads/<?= htmlspecialchars($productImage) ?>">
+                            value="admin/products/uploads/<?= htmlspecialchars($firstImage) ?>">
 
-                        <input type="hidden" name="type">
-                        <input type="hidden" name="price">
-                        <input type="hidden" name="qty" value="1">
+                        <!-- 🔥 MULTI VARIANT SUPPORT -->
+                        <input type="hidden" name="variant_data" id="variant_data_buy">
+                        <input type="hidden" name="unit_price" id="unit_price_buy">
+                        <input type="hidden" name="total_price" id="total_price_buy">
+                        <input type="hidden" name="qty" id="qty_input_buy" value="1">
 
                         <button type="submit" class="btn btn-dark px-4">
                             <i class="bi bi-bag-check me-2"></i> Buy Now
                         </button>
                     </form>
+
                 </div>
 
 

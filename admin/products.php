@@ -291,13 +291,26 @@ $result = $conn->query($query);
                                 <label class="form-label">SKU</label>
                                 <input type="text" name="sku" id="sku" class="form-control" readonly required>
                             </div>
-
                             <div class="col-md-3">
                                 <label class="form-label">Category</label>
                                 <select name="category" class="form-select" required>
                                     <option value="">Select</option>
-                                    <option value="Printing">Printing</option>
-                                    <option value="Stationery">Stationery</option>
+
+                                    <?php 
+                        include 'database/db.php';
+
+                        $query = "SELECT * FROM category";
+                        $run_query = mysqli_query($conn, $query);
+
+                        if(mysqli_num_rows($run_query) > 0){
+                            while ($row = mysqli_fetch_assoc($run_query)) {
+                               ?>
+                                    <option value="<?= $row['cat_name'] ?>"><?= $row['cat_name'] ?></option>
+                                    <?php
+                            }
+                        }
+                        ?>
+
                                 </select>
                             </div>
                         </div>
@@ -385,5 +398,23 @@ $result = $conn->query($query);
         </div>
     </div>
 </div>
+<script>
+function generateSKU(length = 15) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let sku = "";
+
+    for (let i = 0; i < length; i++) {
+        sku += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    return "#" + sku;
+}
+
+// AUTO SKU GENERATION
+document.getElementById("productName").addEventListener("input", () => {
+    document.getElementById("sku").value = generateSKU();
+});
+</script>
+
 <script src="products/js/ajax.js"></script>
 <?php include 'includes/footer.php'; ?>

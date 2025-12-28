@@ -1,7 +1,7 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
         <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="./">
+            <a class="navbar-brand d-flex align-items-center ms-auto" href="./">
                 <img src="assets/Logo.png" alt="3 Brothers Logo" />
                 <span>3 Brothers Print Services</span>
             </a>
@@ -74,7 +74,6 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="userDropdown"
                             role="button" data-bs-toggle="dropdown" aria-expanded="false">
-
                             <i class="bi bi-person-circle fs-5"></i>
                             <span class="d-none d-md-inline">
                                 <?= htmlspecialchars($_SESSION['name']) ?>

@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="../css/style.css" />
 </head>
 
-<body class="bg-light">
+<body class="bg-light" style="background: var(--brand-gradient);">
 
     <!-- Auth Wrapper -->
     <section class="min-vh-100 d-flex align-items-center justify-content-center">
@@ -64,7 +64,7 @@
                                     <label class="form-check-label">Remember me</label>
                                 </div>
 
-                                <a href="forgot.php" class="small">Forgot password?</a>
+                                <a href="forgot-password.php" class="small">Forgot password?</a>
                             </div>
 
                             <button type="submit" name="login" class="btn btn-brand w-100">
