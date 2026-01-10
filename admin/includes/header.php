@@ -1,5 +1,5 @@
 <?php 
-session_start();
+require "auth/auth_check.php";
 ?>
 <!DOCTYPE html>
 <html lang="en">

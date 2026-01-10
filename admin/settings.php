@@ -34,6 +34,7 @@ include 'database/db.php'; ?>
                             if ($row['show_home']) $locations[] = 'Home';
                             if ($row['show_product']) $locations[] = 'Product';
                             if ($row['show_checkout']) $locations[] = 'Checkout';
+                            if ($row['show_order']) $locations[] = 'Product Order Details';
                         }
                     ?>
                             <tr>
@@ -165,6 +166,12 @@ include 'database/db.php'; ?>
                             </div>
 
                             <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="show_order" id="showOrder"
+                                    value="1">
+                                <label class="form-check-label">Product Order Page</label>
+                            </div>
+
+                            <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="show_all" id="showAll" value="1">
                                 <label class="form-check-label">All Pages</label>
                             </div>
@@ -183,7 +190,7 @@ include 'database/db.php'; ?>
         </div>
         <script>
         document.getElementById("showAll").addEventListener("change", function() {
-            const others = ["showHome", "showProduct", "showCheckout"];
+            const others = ["showHome", "showProduct", "showCheckout", "showOrder"];
             others.forEach(id => {
                 document.getElementById(id).disabled = this.checked;
                 if (this.checked) document.getElementById(id).checked = false;
@@ -432,6 +439,138 @@ include 'database/db.php'; ?>
                             Save System Settings
                         </button>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+
+                    <h5 class="card-title mb-3">🔔 Notifications</h5>
+
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Title</th>
+                                <th>Message</th>
+                                <th>Recipient</th>
+                                <th>Link</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            <?php
+                   $notifs = $conn->query("
+                        SELECT 
+                            n.id,
+                            n.user_id,
+                            n.title,
+                            n.message,
+                            n.link,
+                            n.created_at,
+                            u.full_name,
+                            u.account_no
+                        FROM notifications n
+                        LEFT JOIN users u ON u.id = n.user_id
+                        ORDER BY n.id DESC
+                    ");
+
+                    while ($n = $notifs->fetch_assoc()):
+                    ?>
+                            <tr>
+                                <td class="fw-semibold"><?= htmlspecialchars($n['title']) ?></td>
+                                <td><?= htmlspecialchars($n['message']) ?></td>
+                                <td>
+                                    <?php if ($n['user_id']): ?>
+                                    <span class="badge bg-primary">User: <?= htmlspecialchars($n['full_name']) ?></span>
+                                    <?php else: ?>
+                                    <span class="badge bg-success">All Users</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold"><?= htmlspecialchars($n['title']) ?></div>
+                                    <div class="text-muted small">
+                                        <?= htmlspecialchars($n['message']) ?>
+                                    </div>
+
+                                    <?php if (!empty($n['link'])): ?>
+                                    <a href="<?= htmlspecialchars($n['link']) ?>" class="small text-decoration-none">
+                                        Open link →
+                                    </a>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-muted small">
+                                    <?php if (!empty($n['created_at']) && $n['created_at'] !== '0000-00-00 00:00:00'): ?>
+                                    <?= date("M d, Y h:i A", strtotime($n['created_at'])) ?>
+                                    <?php else: ?>
+                                    —
+                                    <?php endif; ?>
+                                </td>
+
+                            </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+
+                    <h5 class="card-title">📨 Send Notification</h5>
+                    <p class="text-muted small">
+                        Send to all users or a specific customer.
+                    </p>
+
+                    <form method="POST" action="settings/send_notification.php">
+
+                        <!-- RECIPIENT -->
+                        <div class="mb-3">
+                            <label class="form-label">Send To</label>
+                            <select name="user_id" class="form-select">
+                                <option value="">All Users</option>
+                                <?php
+                        $users = $conn->query("SELECT id, full_name FROM users ORDER BY full_name");
+                        while ($u = $users->fetch_assoc()):
+                        ?>
+                                <option value="<?= $u['id'] ?>">
+                                    <?= htmlspecialchars($u['full_name']) ?>
+                                </option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+
+                        <!-- TITLE -->
+                        <div class="mb-3">
+                            <label class="form-label">Title</label>
+                            <input type="text" name="title" class="form-control" required>
+                        </div>
+
+                        <!-- MESSAGE -->
+                        <div class="mb-3">
+                            <label class="form-label">Message</label>
+                            <textarea name="message" rows="4" class="form-control" required></textarea>
+                        </div>
+                        <!-- LINK -->
+                        <div class="mb-3">
+                            <label class="form-label">
+                                Link (optional)
+                                <small class="text-muted">(e.g. orders.php?id=123)</small>
+                            </label>
+                            <input type="text" name="link" class="form-control">
+                        </div>
+
+                        <button class="btn btn-primary w-100">
+                            Send Notification
+                        </button>
+
+                    </form>
+
                 </div>
             </div>
         </div>

@@ -1,6 +1,7 @@
 <?php
 session_start();
 require "../database/db.php";
+date_default_timezone_set('Asia/Manila');
 
 $error = null;
 
@@ -13,9 +14,15 @@ $email = $_SESSION['verify_email'];
 
 /* FETCH USER */
 $q = mysqli_query($conn, "
-    SELECT verify_code, otp_expires, otp_attempts, otp_blocked_until
-    FROM users WHERE email='$email'
+    SELECT 
+        verify_code,
+        otp_attempts,
+        otp_blocked_until,
+        TIMESTAMPDIFF(SECOND, NOW(), otp_expires) AS remaining_seconds
+    FROM users 
+    WHERE email='$email'
 ");
+
 $user = mysqli_fetch_assoc($q);
 
 if (!$user) {
@@ -31,12 +38,9 @@ if ($user['otp_blocked_until'] && strtotime($user['otp_blocked_until']) > time()
 /* TIMER */
 $remaining = 0;
 
-if (!empty($user['otp_expires'])) {
-    $expires = strtotime($user['otp_expires']);
-    $now = time();
-
-    if ($expires > $now) {
-        $remaining = $expires - $now;
+if ($user['remaining_seconds'] !== null) {
+    if ($user['remaining_seconds'] > 0) {
+        $remaining = (int) $user['remaining_seconds'];
     } else {
         $error = "OTP expired. Please request a new code.";
     }

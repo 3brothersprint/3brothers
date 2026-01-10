@@ -44,118 +44,119 @@ $result = $conn->query($query);
                             <th class="text-end">Action</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <?php if ($result && $result->num_rows > 0): ?>
-                        <?php while ($row = $result->fetch_assoc()): ?>
-                        <?php
-$statusMap = [
-    'Order Placed' => [
-        'row'   => 'table-info',
-        'badge' => 'primary'
-    ],
-    'To Ship' => [
-        'row'   => 'table-warning',
-        'badge' => 'warning text-dark'
-    ],
-    'To Transit' => [
-        'row'   => 'table-success',
-        'badge' => 'success'
-    ],
-    'Out for Delivery' => [
-        'row'   => 'table-info',
-        'badge' => 'primary'
-    ],
-    'Delivered' => [
-        'row'   => 'table-info',
-        'badge' => 'primary'
-    ],
-    'Cancelled' => [
-        'row'   => 'table-danger',
-        'badge' => 'danger'
-    ],
-];
-
-$status = $row['status'];
-$rowClass = $statusMap[$status]['row'] ?? '';
-$badgeClass = $statusMap[$status]['badge'] ?? 'secondary';
-?>
-
-
-                        <tr class="<?= $rowClass ?> bg-opacity-25">
-
-                            <!-- NAME -->
-                            <td>
-                                <div class="fw-semibold">
-                                    <?= htmlspecialchars($row['recipient_name']) ?>
-                                </div>
-                                <small class="text-muted">
-                                    <?= date('M d, Y', strtotime($row['created_at'])) ?>
-                                </small>
-                            </td>
-
-                            <!-- REQUEST NO -->
-                            <td><?= htmlspecialchars($row['order_no']) ?></td>
-
-                            <!-- SERVICE -->
-                            <td>₱<?= htmlspecialchars($row['total_amount']) ?></td>
-
-                            <!-- EMPTY COLUMN (OPTIONAL) -->
-                            <td>—</td>
-
-                            <!-- STATUS -->
-
-                            <td>
-                                <span class="badge bg-<?= $badgeClass ?>">
-                                    <?= htmlspecialchars($status) ?>
-                                </span>
-                            </td>
-
-
-                            <!-- ACTION -->
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-primary"
-                                    onclick="viewOrder(<?= (int)$row['id'] ?>)">
-                                    <i class="bi bi-eye"></i>
-                                </button>
-
-                                <button class="btn btn-sm btn-outline-success"
-                                    onclick="printReceipt(<?= (int)$row['id'] ?>)">
-                                    <i class="bi bi-printer"></i>
-                                </button>
-
-                                <button class="btn btn-sm btn-outline-danger"
-                                    onclick="deleteOrder(<?= (int)$row['id'] ?>)">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </td>
-
-                        </tr>
-
-                        <?php endwhile; ?>
-                        <?php else: ?>
+                    <tbody id="ordersTable">
                         <tr>
                             <td colspan="6" class="text-center text-muted py-4">
-                                No print orders found
+                                Loading orders...
                             </td>
                         </tr>
-                        <?php endif; ?>
                     </tbody>
                     <script>
-                    function printReceipt(orderId) {
-                        window.open(
-                            'get-product/print_receipt.php?id=' + orderId,
-                            '_blank',
-                            'width=380,height=600'
-                        );
+                    document.addEventListener("DOMContentLoaded", fetchOrders);
+
+                    function fetchOrders() {
+                        fetch("get-product/fetch_orders.php")
+                            .then(res => res.json())
+                            .then(res => {
+                                const table = document.getElementById("ordersTable");
+                                table.innerHTML = "";
+
+                                if (!res.success || res.data.length === 0) {
+                                    table.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            No product orders found
+                        </td>
+                    </tr>`;
+                                    return;
+                                }
+
+                                res.data.forEach(order => {
+                                    const statusMap = {
+                                        "Order Placed": ["table-info", "primary"],
+                                        "To Ship": ["table-warning", "warning text-dark"],
+                                        "To Transit": ["table-success", "success"],
+                                        "Out for Delivery": ["table-info", "primary"],
+                                        "Delivered": ["table-info", "primary"],
+                                        "Cancelled": ["table-danger", "danger"]
+                                    };
+
+                                    const status = order.status;
+                                    const rowClass = statusMap[status]?. [0] ?? "";
+                                    const badgeClass = statusMap[status]?. [1] ?? "secondary";
+
+                                    table.innerHTML += `
+                <tr class="${rowClass} bg-opacity-25">
+                    <td>
+                        <div class="fw-semibold">${escapeHtml(order.recipient_name)}</div>
+                        <small class="text-muted">
+                            ${new Date(order.created_at).toLocaleDateString()}
+                        </small>
+                    </td>
+
+                    <td>${escapeHtml(order.order_no)}</td>
+                    <td>₱${order.total_amount}</td>
+                    <td>—</td>
+
+                    <td>
+                        <span class="badge bg-${badgeClass}">
+                            ${escapeHtml(status)}
+                        </span>
+                    </td>
+
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary"
+                            onclick="viewOrder(${order.id})">
+                            <i class="bi bi-eye"></i>
+                        </button>
+
+                        <button class="btn btn-sm btn-outline-success"
+                            onclick="printReceipt(${order.id})">
+                            <i class="bi bi-printer"></i>
+                        </button>
+
+                        <button class="btn btn-sm btn-outline-danger"
+                            onclick="deleteOrder(${order.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+                                });
+                            });
                     }
+
+                    /* SECURITY: prevent XSS */
+                    function escapeHtml(text) {
+                        return text
+                            .toString()
+                            .replace(/&/g, "&amp;")
+                            .replace(/</g, "&lt;")
+                            .replace(/>/g, "&gt;")
+                            .replace(/"/g, "&quot;")
+                            .replace(/'/g, "&#039;");
+                    }
+
+                    setInterval(fetchOrders, 10000);
                     </script>
 
+                    <script>
+                    function printReceipt(orderId) {
+                        const frame = document.getElementById("printFrame");
 
+                        frame.src = 'get-product/print_receipt.php?id=' + orderId;
+
+                        frame.onload = () => {
+                            frame.contentWindow.focus();
+                            frame.contentWindow.print();
+                        };
+                    }
+                    </script>
                 </table>
             </div>
 
         </div>
     </div>
+    <iframe id="printFrame" style="display:none;"></iframe>
 
 </main>
 </div>

@@ -226,58 +226,6 @@ $logs = $logStmt->get_result()->fetch_all(MYSQLI_ASSOC);
         </div>
     </div>
 
-    <?php
-    /* ===============================
-   STATUS STEPS (SHOPEE STYLE)
-================================ */
-$steps = [
-    'Order Placed' => [
-        'label' => 'Order Placed',
-        'icon'  => 'bi-receipt'
-    ],
-    'To Ship' => [
-        'label' => 'To Ship',
-        'icon'  => 'bi-box-seam'
-    ],
-    'To Transit' => [
-        'label' => 'To Transit',
-        'icon'  => 'bi-truck'
-    ],
-    'Out for Delivery' => [
-        'label' => 'Out for Delivery',
-        'icon'  => 'bi-truck'
-    ],
-    'Delivered' => [
-        'label' => 'Delivered',
-        'icon'  => 'bi-check-circle'
-    ],
-    'Cancelled' => [
-        'label' => 'Cancelled',
-        'icon'  => 'bi-x-circle'
-    ]
-];
-
-
-$currentStatus = trim($request['status']); // normalize
-$stepKeys = array_keys($steps);
-
-/* SAFELY GET CURRENT INDEX */
-$currentIndex = array_search($currentStatus, $stepKeys, true);
-
-if ($currentStatus === 'Cancelled') {
-    $progressPercent = 100;
-    $progressColor   = 'bg-danger';
-} elseif ($currentIndex === false) {
-    // fallback if status is unexpected
-    $progressPercent = 0;
-    $progressColor   = 'bg-secondary';
-} else {
-    $totalSteps = count($stepKeys) - 1;
-    $progressPercent = ($currentIndex / $totalSteps) * 100;
-}
-
-?>
-
     <div class="card shadow-sm rounded-4 mb-4">
         <div class="card-body">
             <h6 class="fw-bold mb-4"><i class="bi bi-truck"></i> Order Status</h6>
@@ -285,150 +233,131 @@ if ($currentStatus === 'Cancelled') {
             <div class="tracker-wrapper position-relative">
 
                 <div class="tracker-line bg-light">
-                    <div class="tracker-line-progress"
-                        style="width: <?= $progressPercent ?>%; background: var(--brand-gradient);">
-                    </div>
+                    <div id="trackerProgress" class="tracker-line-progress"></div>
                 </div>
 
-                <div class="d-flex justify-content-between text-center position-relative">
-                    <?php
-    $stepKeys = array_keys($steps);
-    $currentIndex = array_search($currentStatus, $stepKeys, true);
-    ?>
-
-                    <?php foreach ($steps as $key => $step): ?>
-                    <?php
-        $keyIndex = array_search($key, $stepKeys, true);
-
-        $active = (
-            $currentStatus === 'Cancelled'
-                ? $key === 'Cancelled'
-                : ($currentIndex !== false && $keyIndex !== false && $keyIndex <= $currentIndex)
-        );
-
-        $completed = $active && $keyIndex < $currentIndex;
-        $isOutForDelivery = ($key === 'Out for Delivery' && $active);
-        ?>
-                    <div class="flex-fill tracker-step">
-                        <div class="tracker-circle <?= $active ? 'active' : '' ?>">
-
-                            <?php if ($completed): ?>
-                            ✔
-                            <?php else: ?>
-                            <i class="bi <?= $step['icon'] ?> <?= $isOutForDelivery ? 'truck-move' : '' ?>"></i>
-                            <?php endif; ?>
-
-                        </div>
-
-                        <small class="<?= $active ? 'fw-bold' : 'text-muted' ?>">
-                            <?= $step['label'] ?>
-                        </small>
-                    </div>
-                    <?php endforeach; ?>
+                <div id="trackerSteps" class="d-flex justify-content-between text-center position-relative">
+                    <div class="text-muted small">Loading status...</div>
                 </div>
-                <style>
-                .tracker-circle {
-                    width: 38px;
-                    height: 38px;
-                    border-radius: 50%;
-                    border: 2px solid #ddd;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 1.1rem;
-                    background: #fff;
-                }
-
-                .tracker-circle.active {
-                    background: var(--brand-gradient);
-                    color: #fff;
-                    border-color: transparent;
-                }
-
-                /* 🚚 Truck animation */
-                .truck-move {
-                    animation: truckBounce 1s infinite ease-in-out;
-                }
-
-                @keyframes truckBounce {
-
-                    0%,
-                    100% {
-                        transform: translateX(0);
-                    }
-
-                    50% {
-                        transform: translateX(4px);
-                    }
-                }
-                </style>
 
             </div>
         </div>
     </div>
-    <?php
-$groupedLogs = [];
 
-foreach ($logs as $log) {
-    $status = $log['status'];
-    $groupedLogs[$status][] = $log;
-}
-$lastStatus = null;
-?>
-
-    <!-- TIMELINE -->
     <div class="card shadow-sm rounded-4">
         <div class="card-body">
             <h6 class="fw-bold mb-3"><i class="bi bi-clock-history"></i> Order Timeline</h6>
-            <ul class="timeline">
-
-                <?php foreach ($logs as $log): ?>
-
-                <?php
-    $isNewStatus = $log['status'] !== $lastStatus;
-    ?>
-
-                <li class="timeline-item active">
-
-                    <!-- TIME -->
-                    <div class="timeline-time">
-                        <div><?= date('M d, Y', strtotime($log['created_at'])) ?></div>
-                        <div><?= date('h:i A', strtotime($log['created_at'])) ?></div>
-                    </div>
-
-                    <!-- DOT -->
-                    <div class="timeline-dot">
-                        <span class="dot"></span>
-                    </div>
-
-                    <!-- CONTENT -->
-                    <div class="timeline-content">
-
-                        <?php if ($isNewStatus): ?>
-                        <strong><?= htmlspecialchars($log['status']) ?></strong>
-                        <?php endif; ?>
-
-                        <?php if (!empty($log['remarks'])): ?>
-                        <div class="text-muted small mt-1">
-                            <?= nl2br(htmlspecialchars($log['remarks'])) ?>
-                        </div>
-                        <?php endif; ?>
-
-                    </div>
-
-                </li>
-
-                <?php $lastStatus = $log['status']; ?>
-
-                <?php endforeach; ?>
-
+            <ul id="orderTimeline" class="timeline">
+                <li class="text-muted">Loading timeline...</li>
             </ul>
-
-
         </div>
     </div>
+</div>
 
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    loadOrderStatus();
+    setInterval(loadOrderStatus, 10000); // auto refresh
+});
+
+function loadOrderStatus() {
+    fetch("ajax/fetch_order_status.php?order_id=<?= (int)$request['id'] ?>")
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) return;
+
+            renderTracker(data);
+            renderTimeline(data.logs);
+        });
+}
+
+/* ================= TRACKER ================= */
+
+function renderTracker(data) {
+    const stepsEl = document.getElementById("trackerSteps");
+    const progressEl = document.getElementById("trackerProgress");
+
+    stepsEl.innerHTML = "";
+    progressEl.style.width = data.progress + "%";
+    progressEl.style.background = "var(--brand-gradient)";
+
+    const keys = Object.keys(data.steps);
+
+    keys.forEach((key, index) => {
+        const step = data.steps[key];
+
+        const active =
+            data.currentStatus === "Cancelled" ?
+            key === "Cancelled" :
+            index <= data.currentIndex;
+
+        const completed = index < data.currentIndex;
+
+        stepsEl.innerHTML += `
+            <div class="flex-fill tracker-step">
+                <div class="tracker-circle ${active ? "active" : ""}">
+                    ${completed ? "✔" : `<i class="bi ${step.icon}"></i>`}
+                </div>
+                <small class="${active ? "fw-bold" : "text-muted"}">
+                    ${step.label}
+                </small>
+            </div>
+        `;
+    });
+}
+
+/* ================= TIMELINE ================= */
+
+function renderTimeline(logs) {
+    const timeline = document.getElementById("orderTimeline");
+    timeline.innerHTML = "";
+
+    if (!logs.length) {
+        timeline.innerHTML = `
+            <li class="text-muted text-center py-3">
+                No status updates yet.
+            </li>`;
+        return;
+    }
+
+    let lastStatus = null;
+
+    logs.forEach(log => {
+        const isNewStatus = log.status !== lastStatus;
+        const date = new Date(log.created_at);
+
+        timeline.innerHTML += `
+            <li class="timeline-item active">
+                <div class="timeline-time">
+                    <div>${date.toLocaleDateString()}</div>
+                    <div>${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+
+                <div class="timeline-dot">
+                    <span class="dot"></span>
+                </div>
+
+                <div class="timeline-content">
+                    ${isNewStatus ? `<strong>${escapeHtml(log.status)}</strong>` : ""}
+                    ${log.remarks ? `<div class="text-muted small mt-1">${escapeHtml(log.remarks)}</div>` : ""}
+                </div>
+            </li>
+        `;
+
+        lastStatus = log.status;
+    });
+}
+
+/* ================= SECURITY ================= */
+
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+
 
 <!-- STYLES -->
 <style>
@@ -572,6 +501,66 @@ $lastStatus = null;
 .timeline-content strong {
     display: block;
     font-size: 0.95rem;
+}
+
+/* ===============================
+   MOBILE FIX: ORDER STATUS TRACKER
+================================ */
+@media (max-width: 768px) {
+
+    .tracker-wrapper {
+        padding-top: 0;
+    }
+
+    /* Hide horizontal line */
+    .tracker-line {
+        display: none;
+    }
+
+    /* Stack steps vertically */
+    #trackerSteps {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        position: relative;
+        padding-left: 20px;
+    }
+
+    /* Vertical line */
+    #trackerSteps::before {
+        content: "";
+        position: absolute;
+        left: 35px;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: #dee2e6;
+        border-radius: 2px;
+    }
+
+    .tracker-step {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-align: left;
+        position: relative;
+    }
+
+    .tracker-circle {
+        width: 32px;
+        height: 32px;
+        margin: 0;
+        z-index: 1;
+        flex-shrink: 0;
+    }
+
+    .tracker-step small {
+        font-size: 0.9rem;
+    }
+
+    .tracker-circle.active {
+        background: var(--brand-gradient);
+    }
 }
 </style>
 

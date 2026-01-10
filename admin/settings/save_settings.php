@@ -17,6 +17,7 @@ if ($type === 'announcement') {
     $show_home     = isset($_POST['show_home']) ? 1 : 0;
     $show_product  = isset($_POST['show_product']) ? 1 : 0;
     $show_checkout = isset($_POST['show_checkout']) ? 1 : 0;
+    $show_order = isset($_POST['show_order']) ? 1 : 0;
     $show_all      = isset($_POST['show_all']) ? 1 : 0;
     $is_enabled    = isset($_POST['is_enabled']) ? 1 : 0;
 
@@ -25,16 +26,17 @@ if ($type === 'announcement') {
 
     $stmt = $conn->prepare("
         INSERT INTO announcements
-        (message, show_home, show_product, show_checkout, show_all, is_enabled)
-        VALUES (?, ?, ?, ?, ?, ?)
+        (message, show_home, show_product, show_checkout, show_order, show_all, is_enabled)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     ");
 
     $stmt->bind_param(
-        "siiiii",
+        "siiiiii",
         $message,
         $show_home,
         $show_product,
         $show_checkout,
+        $show_order,
         $show_all,
         $is_enabled
     );

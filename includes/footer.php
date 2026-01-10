@@ -57,33 +57,80 @@
 </footer>
 <script>
 function loadNotifications() {
-    fetch("ajax/fetch_notifications.php")
+    fetch('ajax/fetch_notifications.php')
         .then(res => res.json())
         .then(data => {
-            const badge = document.getElementById("notifBadge");
-            const list = document.getElementById("notifList");
+            const list = document.getElementById('notificationList');
 
-            list.innerHTML = data.html;
+            if (!data.length) {
+                list.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        No notifications
+                    </div>`;
+                return;
+            }
 
-            if (data.count > 0) {
-                badge.textContent = data.count;
-                badge.classList.remove("d-none");
+            list.innerHTML = '';
+
+            data.forEach(n => {
+                list.innerHTML += `
+                    <a href="${n.link ?? '#'}"
+                       class="list-group-item list-group-item-action ${n.is_read == 0 ? 'bg-light fw-semibold' : ''}"
+                       onclick="markRead(${n.id})">
+                        <div class="d-flex justify-content-between">
+                            <span>${n.title}</span>
+                            <small class="text-muted">${formatDate(n.created_at)}</small>
+                        </div>
+                        <div class="text-muted small">${n.message}</div>
+                    </a>
+                `;
+            });
+        });
+}
+
+function markRead(id) {
+    fetch('ajax/mark_notifications_read.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `id=${id}`
+    });
+}
+
+function formatDate(date) {
+    if (!date) return '—';
+    return new Date(date).toLocaleString();
+}
+
+document.getElementById('markAllRead').addEventListener('click', () => {
+    fetch('ajax/mark_all_notifications_read.php')
+        .then(() => loadNotifications());
+});
+
+loadNotifications();
+
+function loadNotifBadge() {
+    fetch('ajax/unread_count.php')
+        .then(res => res.text())
+        .then(count => {
+            const badge = document.getElementById('notifBadge');
+            count = parseInt(count);
+
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('d-none');
             } else {
-                badge.classList.add("d-none");
+                badge.classList.add('d-none');
             }
         });
 }
 
-/* Load on page load */
-document.addEventListener("DOMContentLoaded", loadNotifications);
-
-/* Mark notifications as read when dropdown opens */
-document.getElementById("notifDropdown").addEventListener("click", () => {
-    fetch("ajax/mark_notifications_read.php", {
-        method: "POST"
-    });
-    document.getElementById("notifBadge").classList.add("d-none");
-});
+loadNotifBadge();
+setInterval(() => {
+    loadNotifications();
+    loadNotifBadge();
+}, 10000);
 </script>
 
 <!-- JavaScript -->

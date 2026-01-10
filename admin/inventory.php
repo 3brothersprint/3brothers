@@ -4,16 +4,19 @@ include 'database/db.php';
 
 $products = $conn->query("
     SELECT 
-        id,
-        product_no,
-        name,
-        price,
-        stock,
-        status,
-        created_at
-    FROM products
-    ORDER BY name ASC
+        pv.id AS variant_id,
+        p.name AS product_name,
+        p.product_no,
+        pv.type,
+        p.sku,
+        pv.price,
+        pv.stock,
+        p.status
+    FROM product_variants pv
+    INNER JOIN products p ON p.id = pv.product_id
+    ORDER BY p.name ASC, pv.type ASC
 ");
+
 ?>
 
 <main class="col-md-9 col-lg-10 px-4 py-4">
@@ -34,6 +37,8 @@ $products = $conn->query("
                     <thead class="table-light">
                         <tr>
                             <th>Product</th>
+                            <th>Variant Type</th>
+                            <th>SKU</th>
                             <th>Price</th>
                             <th>Stock</th>
                             <th>Status</th>
@@ -44,59 +49,76 @@ $products = $conn->query("
                         <?php if ($products && $products->num_rows > 0): ?>
                         <?php while ($row = $products->fetch_assoc()): ?>
                         <?php
-                                $lowStock = ($row['stock'] <= 5);
-                                ?>
+                            $lowStock = ($row['stock'] <= ($row['reorder_level'] ?? 5));
+                        ?>
                         <tr class="<?= $lowStock ? 'table-warning' : '' ?>">
+
+                            <!-- PRODUCT -->
                             <td>
                                 <div class="fw-semibold">
-                                    <?= htmlspecialchars($row['name']) ?>
+                                    <?= htmlspecialchars($row['product_name']) ?>
                                 </div>
                                 <small class="text-muted">
                                     ID: <?= $row['product_no'] ?>
                                 </small>
                             </td>
 
-                            <td>₱<?= number_format($row['price'], 2) ?></td>
+                            <!-- VARIANT -->
+                            <td>
+                                <?= htmlspecialchars($row['type']) ?>
+                            </td>
 
+                            <!-- SKU -->
+                            <td>
+                                <code><?= htmlspecialchars($row['sku']) ?></code>
+                            </td>
+
+                            <!-- PRICE -->
+                            <td>
+                                ₱<?= number_format($row['price'], 2) ?>
+                            </td>
+
+                            <!-- STOCK -->
                             <td>
                                 <span class="badge bg-<?= $lowStock ? 'danger' : 'success' ?>">
                                     <?= (int)$row['stock'] ?>
                                 </span>
                                 <?php if ($lowStock): ?>
-                                <small class="text-danger d-block">
-                                    Low stock
-                                </small>
+                                <small class="text-danger d-block">Low stock</small>
                                 <?php endif; ?>
                             </td>
 
+                            <!-- STATUS -->
                             <td>
                                 <span class="badge bg-<?= $row['status'] === 'Active' ? 'success' : 'secondary' ?>">
                                     <?= $row['status'] ?>
                                 </span>
                             </td>
 
+                            <!-- ACTIONS -->
                             <td class="text-end">
                                 <button class="btn btn-sm btn-outline-secondary"
-                                    onclick="printStock(<?= (int)$row['id'] ?>)" title="Print Inventory">
+                                    onclick="printStock(<?= (int)$row['variant_id'] ?>)" title="Print Inventory">
                                     <i class="bi bi-printer"></i>
                                 </button>
 
-
                                 <button class="btn btn-sm btn-outline-secondary"
-                                    onclick="viewProduct(<?= $row['id'] ?>)">
+                                    onclick="viewVariant(<?= (int)$row['variant_id'] ?>)">
                                     <i class="bi bi-eye"></i>
                                 </button>
                             </td>
+
                         </tr>
                         <?php endwhile; ?>
                         <?php else: ?>
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
-                                No products found
+                            <td colspan="7" class="text-center text-muted py-4">
+                                No variants found
                             </td>
                         </tr>
                         <?php endif; ?>
                     </tbody>
+
                 </table>
             </div>
 

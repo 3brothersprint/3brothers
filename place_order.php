@@ -123,10 +123,15 @@ $itemStmt = $conn->prepare("
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ");
 $stockStmt = $conn->prepare("
-    UPDATE products
+    UPDATE product_variants
     SET stock = stock - ?
-    WHERE id = ? AND stock >= ?
+    WHERE product_id = ?
+      AND type = ?
+      AND value = ?
+      AND stock >= ?
 ");
+
+
 $conn->begin_transaction();
 
 while ($item = $items->fetch_assoc()) {
@@ -151,14 +156,35 @@ while ($item = $items->fetch_assoc()) {
        DEDUCT PRODUCT STOCK
        =============================== */
     $qty = (int)$item['quantity'];
-    $pid = (int)$item['product_id'];
+$pid = (int)$item['product_id'];
 
-    $stockStmt->bind_param("iii", $qty, $pid, $qty);
+/* Decode variant JSON */
+$variantData = json_decode($item['variant_type'], true);
+
+if (!$variantData || !is_array($variantData)) {
+    die("Invalid variant data for product ID: $pid");
+}
+
+/* Deduct stock PER VARIANT */
+foreach ($variantData as $type => $data) {
+
+    $value = $data['value'];
+
+    $stockStmt->bind_param(
+        "iissi",
+        $qty,
+        $pid,
+        $type,
+        $value,
+        $qty
+    );
     $stockStmt->execute();
 
     if ($stockStmt->affected_rows === 0) {
-        die("Insufficient stock for product ID: $pid");
+        die("Insufficient stock for product ID: $pid ($type: $value)");
     }
+}
+
 }
 
 /* ===============================

@@ -47,6 +47,44 @@ if ($result->num_rows > 0) {
 <section class="py-5">
     <div class="container">
         <div class="row g-4">
+            <!-- Announcement Banner -->
+            <div class="container mt-3">
+
+                <?php
+$announcement = $conn->query("
+    SELECT * FROM announcements
+    WHERE is_enabled = 1 AND (show_checkout = 1 OR show_all = 1)
+    LIMIT 1
+")->fetch_assoc();
+
+if ($announcement):
+?>
+                <div class="alert alert-warning alert-dismissible fade show
+            d-flex align-items-start gap-3
+            rounded-3 shadow-sm px-4 py-3
+            border-start border-4 border-warning
+            border-top-0 border-end-0 border-bottom-0">
+
+                    <!-- MESSAGE -->
+                    <div class="flex-grow-1 fs-6" role="alert">
+                        <?= nl2br(htmlspecialchars($announcement['message'])) ?>
+                    </div>
+                </div>
+
+
+                <?php endif; ?>
+
+            </div>
+            <style>
+            .announcement-banner {
+                background: var(--brand-gradient);
+                color: #fff;
+            }
+
+            .announcement-banner .btn-close {
+                filter: invert(1);
+            }
+            </style>
             <!-- Left: Checkout Form -->
             <div class="col-lg-8">
                 <!-- Delivery Address -->

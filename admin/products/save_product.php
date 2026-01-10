@@ -10,20 +10,18 @@ use Picqer\Barcode\BarcodeGeneratorPNG;
 $name        = $_POST['name'];
 $sku         = $_POST['sku'];
 $category    = $_POST['category'];
-$price       = $_POST['price'];
-$stock       = $_POST['stock'];
 $status      = $_POST['status'];
 $description = $_POST['description'];
 $small       = $_POST['small_description'];
 
-$product_no = "3BP" . rand(1000000, 9999999);
+$product_no = rand(100000000000000, 999999999999999);
 
 /* INSERT PRODUCT */
 $conn->query("
     INSERT INTO products 
-    (product_no, sku, name, category, price, stock, status, description, small_description)
-    VALUES 
-    ('$product_no', '$sku', '$name', '$category', '$price', '$stock', '$status', '$description', '$small')
+(product_no, sku, name, category, status, description, small_description)
+VALUES 
+('$product_no', '$sku', '$name', '$category', '$status', '$description', '$small')
 ");
 
 $product_id = $conn->insert_id;
@@ -115,4 +113,8 @@ if (!empty($_FILES['images']['tmp_name'][0])) {
     }
 }
 
-echo "success";
+$_SESSION['message'] = "Product saved successfully";
+$_SESSION['msg_type'] = "success";
+
+header("Location: ../products.php");
+exit;

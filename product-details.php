@@ -18,8 +18,13 @@ $images = $conn->query("
     WHERE product_id = $id 
     ORDER BY sort_order ASC
 ");
-$images->data_seek(0);
-$firstImage = $images->fetch_assoc()['image'] ?? 'placeholder.png';
+$imagesArr = [];
+while ($img = $images->fetch_assoc()) {
+    $imagesArr[] = $img;
+}
+
+$firstImage = $imagesArr[0]['image'] ?? 'placeholder.png';
+
 
 /* VARIANTS */
 $variants = $conn->query("
@@ -42,16 +47,15 @@ $specs = $conn->query("
             <!-- IMAGES -->
             <div class="col-lg-6">
                 <div class="card border-0 shadow-sm rounded-4">
-                    <img id="mainImage"
-                        src="admin/products/uploads/<?= $images->fetch_assoc()['image'] ?? 'placeholder.png' ?>"
-                        class="img-fluid rounded-4">
+                    <img id="mainImage" src="admin/products/uploads/<?= $firstImage ?>" class="img-fluid rounded-4">
                 </div>
 
                 <div class="d-flex gap-2 mt-3">
-                    <?php $images->data_seek(0); while ($img = $images->fetch_assoc()): ?>
+                    <?php foreach ($imagesArr as $img): ?>
                     <img src="admin/products/uploads/<?= $img['image'] ?>" class="img-thumbnail thumb"
                         onclick="document.getElementById('mainImage').src=this.src">
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
+
                 </div>
             </div>
 
@@ -70,19 +74,29 @@ $specs = $conn->query("
                     <span class="ms-2 text-muted">(24 reviews)</span>
                 </div>
                 <?php 
-                    $variantsResult = $conn->query("
+                   $variantsResult = $conn->query("
                         SELECT * FROM product_variants 
                         WHERE product_id = $id
                     ");
 
                     $variants = [];
-                    while ($row = $variantsResult->fetch_assoc()) {
-                        $variants[] = $row;
+                    while ($v = $variantsResult->fetch_assoc()) {
+                        $variants[] = $v;
                     }
-                    $prices = array_column($variants, 'price');
 
+                    if (empty($variants)) {
+                        die("No variants available for this product.");
+                    }
+
+                    $prices = array_column($variants, 'price');
                     $minPrice = min($prices);
                     $maxPrice = max($prices);
+
+                    /* Group variants by type */
+                    $groupedVariants = [];
+                    foreach ($variants as $v) {
+                        $groupedVariants[$v['type']][] = $v;
+                    }
                     $typeRow = $conn->query("
                         SELECT type 
                         FROM product_variants 
@@ -96,10 +110,19 @@ $specs = $conn->query("
                     foreach ($variants as $v) {
                         $groupedVariants[$v['type']][] = $v;
                     }
+                    /* 🔥 FIRST VARIANT GROUP ONLY */
+                    $firstVariantType = array_key_first($groupedVariants);
+                    $firstVariantPrices = array_column($groupedVariants[$firstVariantType], 'price');
+
+                    $displayMin = min($firstVariantPrices);
+                    $displayMax = max($firstVariantPrices);
                 ?>
                 <!-- Price -->
                 <h3 class="text-brand fw-bold mb-3" id="productPrice">
-                    ₱<?= number_format($minPrice, 2) ?> – ₱<?= number_format($maxPrice, 2) ?>
+                    ₱<?= number_format($displayMin, 2) ?>
+                    <?php if ($displayMin != $displayMax): ?>
+                    – ₱<?= number_format($displayMax, 2) ?>
+                    <?php endif; ?>
                 </h3>
 
 
@@ -119,10 +142,11 @@ $specs = $conn->query("
                         <div class="variant-group">
                             <?php foreach ($values as $v): ?>
                             <button type="button" class="variant-btn" data-price="<?= (float)$v['price'] ?>"
-                                data-type="<?= htmlspecialchars($type) ?>"
+                                data-id="<?= (int)$v['id'] ?>" data-type="<?= htmlspecialchars($type) ?>"
                                 data-value="<?= htmlspecialchars($v['value']) ?>" onclick="selectVariant(this)">
                                 <?= htmlspecialchars($v['value']) ?>
                             </button>
+
                             <?php endforeach; ?>
                         </div>
                     </div>
@@ -327,4 +351,65 @@ $specs = $conn->query("
         </div>
     </div>
 </section>
+<script>
+let selectedVariants = {}; // { type: { value, price } }
+
+function selectVariant(btn) {
+    const type = btn.dataset.type;
+    const value = btn.dataset.value;
+    const price = parseFloat(btn.dataset.price);
+
+    // Toggle active state per variant type
+    document.querySelectorAll(`[data-type="${type}"]`)
+        .forEach(b => b.classList.remove("active"));
+
+    btn.classList.add("active");
+
+    // Save variant selection
+    selectedVariants[type] = {
+        value: value,
+        price: price
+    };
+
+    updatePrice();
+}
+
+function updatePrice() {
+    const qty = parseInt(document.getElementById("qty").value || 1);
+
+    // 🔥 ADD ALL VARIANT PRICES
+    let unitPrice = 0;
+    Object.values(selectedVariants).forEach(v => {
+        unitPrice += v.price;
+    });
+
+    const total = unitPrice * qty;
+
+    // Update price display
+    document.getElementById("productPrice").innerHTML =
+        "₱" + unitPrice.toFixed(2) +
+        (qty > 1 ? ` <small class="text-muted">(₱${total.toFixed(2)} total)</small>` : "");
+
+    // Sync forms (Add to Cart)
+    document.getElementById("variant_data").value =
+        JSON.stringify(selectedVariants);
+
+    document.getElementById("unit_price").value = unitPrice;
+    document.getElementById("total_price").value = total;
+
+    // Sync Buy Now
+    document.getElementById("variant_data_buy").value =
+        JSON.stringify(selectedVariants);
+
+    document.getElementById("unit_price_buy").value = unitPrice;
+    document.getElementById("total_price_buy").value = total;
+
+    document.getElementById("qty_input").value = qty;
+    document.getElementById("qty_input_buy").value = qty;
+}
+
+// Quantity change
+document.getElementById("qty").addEventListener("input", updatePrice);
+</script>
+
 <?php include 'includes/footer.php'; ?>

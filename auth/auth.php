@@ -1,3 +1,7 @@
+<?php
+session_start();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -12,6 +16,19 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../css/style.css" />
+    <style>
+    .auth-card {
+        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    }
+
+    .auth-card label {
+        font-weight: 500;
+    }
+
+    .auth-card input {
+        font-size: 0.95rem;
+    }
+    </style>
 </head>
 
 <body class="bg-light" style="background: var(--brand-gradient);">
@@ -25,6 +42,14 @@
                 <h4 class="fw-bold mb-1">3 Brothers Print Services</h4>
                 <small>Welcome back! Please login or create an account</small>
             </div>
+            <?php if (!empty($_SESSION['error'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show rounded-0 mb-0 text-center fw-semibold"
+                role="alert" style="background:#dc3545;color:#fff;font-size:0.95rem;letter-spacing:.3px">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                <?= htmlspecialchars($_SESSION['error']) ?>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+            </div>
+            <?php unset($_SESSION['error']); endif; ?>
 
             <!-- Tabs -->
             <div class="card-body p-4">
@@ -118,10 +143,4 @@
 
         </div>
     </section>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-
-</body>
-
-</html>
+    <?php include '../includes/footer.php'; ?>

@@ -554,24 +554,6 @@ $flashSale = $conn->query("
     LIMIT 1
 ")->fetch_assoc();
 
-$products = $conn->query("
-    SELECT 
-        p.id,
-        p.name,
-        p.price,
-        (
-            SELECT image 
-            FROM product_images 
-            WHERE product_id = p.id 
-            ORDER BY sort_order ASC 
-            LIMIT 1
-        ) AS image
-    FROM products p
-    WHERE p.status = 'Active'
-    ORDER BY p.id DESC
-    LIMIT 8
-");
-
 function getDiscountedPrice($price, $sale) {
     if (!$sale) return $price;
 
@@ -592,97 +574,29 @@ function getDiscountedPrice($price, $sale) {
             <a href="404.php" class="btn btn-sm btn-brand">View All</a>
         </div>
 
-        <div class="row g-4">
-            <?php while ($row = $products->fetch_assoc()): ?>
-
-            <?php
-            /* ===============================
-               PRICE RANGE (VARIANTS)
-            ================================ */
-            $stmt = $conn->prepare("
-                SELECT MIN(price) AS min_price, MAX(price) AS max_price
-                FROM product_variants
-                WHERE product_id = ?
-            ");
-            $stmt->bind_param("i", $row['id']);
-            $stmt->execute();
-            $priceRange = $stmt->get_result()->fetch_assoc();
-
-            $minPrice = $priceRange['min_price'] ?? $row['price'];
-            $maxPrice = $priceRange['max_price'] ?? $row['price'];
-
-            $originalMin = $minPrice;
-            $originalMax = $maxPrice;
-
-            if ($flashSale) {
-                $minPrice = getDiscountedPrice($minPrice, $flashSale);
-                $maxPrice = getDiscountedPrice($maxPrice, $flashSale);
-            }
-            ?>
-
-            <div class="col-6 col-md-3">
-                <a href="product-details.php?id=<?= $row['id'] ?>" class="product-link text-decoration-none">
-                    <div class="product-card h-100">
-
-                        <!-- IMAGE -->
-                        <div class="product-img">
-                            <img src="admin/products/uploads/<?= $row['image'] ?? 'placeholder.png' ?>"
-                                alt="<?= htmlspecialchars($row['name']) ?>">
-                        </div>
-
-                        <!-- BODY -->
-                        <div class="product-body">
-                            <h6 class="product-title">
-                                <?= htmlspecialchars($row['name']) ?>
-                            </h6>
-
-                            <div class="product-price">
-
-                                <?php if ($flashSale): ?>
-                                <span class="badge bg-danger mb-1 d-inline-block">
-                                    <?php if ($flashSale['discount_type'] === 'percent'): ?>
-                                    <?= $flashSale['discount_value'] ?>% OFF
-                                    <?php else: ?>
-                                    ₱<?= number_format($flashSale['discount_value'], 0) ?> OFF
-                                    <?php endif; ?>
-                                </span>
-                                <?php endif; ?>
-
-                                <!-- PRICE RANGE -->
-                                <div>
-                                    <span class="text-danger fw-bold">
-                                        ₱<?= number_format($minPrice, 2) ?>
-                                        <?php if ($minPrice != $maxPrice): ?>
-                                        – ₱<?= number_format($maxPrice, 2) ?>
-                                        <?php endif; ?>
-                                    </span>
-
-                                    <?php if ($flashSale): ?>
-                                    <div class="small text-muted text-decoration-line-through">
-                                        ₱<?= number_format($originalMin, 2) ?>
-                                        <?php if ($originalMin != $originalMax): ?>
-                                        – ₱<?= number_format($originalMax, 2) ?>
-                                        <?php endif; ?>
-                                    </div>
-                                    <?php endif; ?>
-                                </div>
-
-                            </div>
-                        </div>
-
-                    </div>
-                </a>
+        <div class="row g-4" id="featuredProducts">
+            <div class="col-12 text-center text-muted py-4">
+                Loading products...
             </div>
-            <?php endwhile; ?>
-
-            <?php if ($products->num_rows == 0): ?>
-            <div class="col-12 text-center text-muted">
-                No products available
-            </div>
-            <?php endif; ?>
         </div>
+
     </div>
 </section>
+<script>
+function loadFeaturedProducts() {
+    fetch("ajax/load-featured-products.php")
+        .then(res => res.text())
+        .then(html => {
+            document.getElementById("featuredProducts").innerHTML = html;
+        })
+        .catch(() => {
+            document.getElementById("featuredProducts").innerHTML =
+                `<div class="col-12 text-center text-danger">Failed to load products</div>`;
+        });
+}
+
+document.addEventListener("DOMContentLoaded", loadFeaturedProducts);
+</script>
 
 <!-- IMAGE FIX STYLES -->
 <style>

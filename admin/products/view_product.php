@@ -49,14 +49,8 @@ $variants = $conn->query("
 
 <hr>
 
-<h6>Pricing & Stock</h6>
+<h6>Status of Product</h6>
 <ul class="list-group mb-3">
-    <li class="list-group-item">
-        Price: ₱<?= number_format($product['price'], 2) ?>
-    </li>
-    <li class="list-group-item">
-        Stock: <?= $product['stock'] ?>
-    </li>
     <li class="list-group-item align-items-center">
         <span>Status: </span>
 
@@ -75,7 +69,7 @@ $variants = $conn->query("
 
 <hr>
 
-<h6>Variants</h6>
+<h6>Pricing & Stock of Variants</h6>
 
 <?php if ($variants->num_rows > 0): ?>
 <?php while ($v = $variants->fetch_assoc()): ?>

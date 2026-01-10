@@ -28,33 +28,33 @@ $value   = $variant['value'];
     <style>
     @page {
         size: A4;
-        margin: 8mm;
+        margin: 6mm;
     }
 
     body {
         margin: 0;
-        font-family: Arial, sans-serif;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #fff;
     }
 
     /* A4 GRID */
     .sheet {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 8mm;
+        gap: 6mm;
     }
 
-    /* LABEL */
+    /* GROCERY LABEL */
     .label {
         width: 50mm;
-        height: 35mm;
-        text-align: center;
-        padding: 4mm;
+        height: 32mm;
+        padding: 2mm;
         box-sizing: border-box;
-        border: 1px dashed #ccc;
-        /* remove if unwanted */
+        text-align: center;
+        background: #fff;
     }
 
-    .label img {
+    .barcode {
         width: 100%;
         height: 18mm;
         object-fit: contain;
@@ -62,8 +62,9 @@ $value   = $variant['value'];
 
     .name {
         font-size: 10px;
-        font-weight: bold;
-        margin-top: 2mm;
+        font-weight: 700;
+        line-height: 1.1;
+        margin-top: 1mm;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -71,18 +72,19 @@ $value   = $variant['value'];
 
     .variant {
         font-size: 9px;
+        color: #333;
+        margin-top: 0.5mm;
     }
 
     .code {
         font-size: 9px;
-        letter-spacing: 1px;
+        letter-spacing: 1.5px;
+        margin-top: 0.5mm;
     }
 
     @media print {
         .label {
             page-break-inside: avoid;
-            border: none;
-            /* hides border on print */
         }
     }
     </style>
@@ -93,7 +95,7 @@ $value   = $variant['value'];
     <div class="sheet">
         <?php for ($i = 0; $i < 24; $i++): ?>
         <div class="label">
-            <img src="barcodes/<?= htmlspecialchars($barcode) ?>.png">
+            <img class="barcode" src="barcodes/<?= htmlspecialchars($barcode) ?>.png">
             <div class="name"><?= htmlspecialchars($name) ?></div>
             <div class="variant"><?= htmlspecialchars($value) ?></div>
             <div class="code"><?= htmlspecialchars($barcode) ?></div>

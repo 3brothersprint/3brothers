@@ -1,9 +1,34 @@
 :root {
+    --brand-primary-start: #fa9d75;
+    /* rgba(250,157,117) */
+    --brand-primary-end: #f59f53;
+    /* rgba(245,159,83) */
     --brand-gradient: linear-gradient(90deg,
-            rgba(250, 157, 117, 1) 0%,
-            rgba(245, 159, 83, 1) 100%);
+            var(--brand-primary-start) 0%,
+            var(--brand-primary-end) 100%);
+
     --brand-dark: #5a2f1d;
+
+    --brand-accent: #ffb703;
+    /* Buttons, badges, CTA */
+    --brand-accent-soft: #fff2e8;
+    /* Background highlights */
+    --brand-bg: #fffaf6;
+    /* Page background */
+    --brand-surface: #ffffff;
+    /* Cards */
+    --brand-border: #f1d5c5;
+    /* Dividers */
+    --status-success: #2d6a4f;
+    /* Muted green */
+    --status-warning: #f4a261;
+    /* Warm amber */
+    --status-danger: #b23a2f;
+    /* Brick red */
+    --status-info: #457b9d;
+
 }
+
 
 /* Sidebar */
 .sidebar {

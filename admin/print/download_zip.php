@@ -19,7 +19,7 @@ if ($result->num_rows === 0) {
     die("No files found");
 }
 
-$zipName = "print_request_{$request_id}.zip";
+$zipName = "Print Order - {$request_id}.zip";
 $tmpZip  = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $zipName;
 
 $zip = new ZipArchive();

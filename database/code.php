@@ -170,53 +170,73 @@ if (isset($_POST['login'])) {
 
     $email    = trim($_POST['email']);
     $pass     = $_POST['password'];
-    $remember = isset($_POST['remember']); // checkbox
+    $remember = isset($_POST['remember']);
 
-    $query = mysqli_query($conn, "SELECT * FROM users WHERE email='$email'");
+    $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-    if (mysqli_num_rows($query) == 0) {
+    if ($result->num_rows === 0) {
         $_SESSION['error'] = "Invalid email or password";
-        header("Location: ../auth/login.php");
+        header("Location: ../auth/auth.php");
         exit();
     }
 
-    $user = mysqli_fetch_assoc($query);
+    $user = $result->fetch_assoc();
 
+    /* PASSWORD CHECK */
     if (!password_verify($pass, $user['password'])) {
         $_SESSION['error'] = "Invalid email or password";
-        header("Location: ../auth/login.php");
+        header("Location: ../auth/auth.php");
         exit();
     }
 
-    // Force OTP if not verified
+    /* 🚫 BAN CHECK */
+    if ($user['is_banned'] == 1) {
+        $_SESSION['error'] = "Your account has been banned. Please contact support through FB or Email";
+        header("Location: ../auth/auth.php");
+        exit();
+    }
+
+    /* 🚫 PREVENT ADMIN LOGIN HERE */
+    if ($user['role'] === 'admin') {
+        $_SESSION['error'] = "Admin accounts must login via the Admin Panel.";
+        header("Location: ../auth/auth.php");
+        exit();
+    }
+
+    /* FORCE OTP IF NOT VERIFIED */
     if ($user['is_verified'] == 0) {
         $_SESSION['verify_email'] = $email;
         header("Location: ../auth/verify.php");
         exit();
     }
 
-    // NORMAL LOGIN
+    /* NORMAL USER LOGIN */
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['name']    = $user['full_name'];
 
     /* ===== REMEMBER ME TOKEN ===== */
     if ($remember) {
-        $token = bin2hex(random_bytes(32)); // secure
+        $token = bin2hex(random_bytes(32));
         $hash  = hash('sha256', $token);
 
-        mysqli_query($conn,"
+        $update = $conn->prepare("
             UPDATE users 
-            SET remember_token='$hash'
-            WHERE id='{$user['id']}'
+            SET remember_token = ? 
+            WHERE id = ?
         ");
+        $update->bind_param("si", $hash, $user['id']);
+        $update->execute();
 
         setcookie(
             "remember_token",
             $token,
-            time() + (60 * 60 * 24 * 30), // 30 days
+            time() + (60 * 60 * 24 * 30),
             "/",
             "",
-            true,  // secure (HTTPS)
+            true,  // secure
             true   // httponly
         );
     }

@@ -29,11 +29,23 @@ endif;
     <?php
     include 'database/db.php';
 $query = "
-    SELECT p.*, 
-           (SELECT image FROM product_images WHERE product_id = p.id ORDER BY sort_order ASC LIMIT 1) AS image
+    SELECT 
+        p.*,
+        COALESCE(SUM(pv.stock), 0) AS total_stock,
+        (
+            SELECT pi.image 
+            FROM product_images pi 
+            WHERE pi.product_id = p.id 
+            ORDER BY pi.sort_order ASC 
+            LIMIT 1
+        ) AS image
     FROM products p
+    LEFT JOIN product_variants pv 
+        ON pv.product_id = p.id
+    GROUP BY p.id
     ORDER BY p.id DESC
 ";
+
 $result = $conn->query($query);
 ?>
     <div class="row g-2 mb-3">
@@ -61,7 +73,6 @@ $result = $conn->query($query);
                             <th>Product</th>
                             <th>Category</th>
                             <th>Price</th>
-                            <th>Stock</th>
                             <th>Status</th>
                             <th class="text-end">Action</th>
                         </tr>
@@ -71,24 +82,63 @@ $result = $conn->query($query);
                         <?php while ($row = $result->fetch_assoc()): ?>
 
                         <?php
-            // Stock badge logic
-            if ($row['stock'] <= 0) {
-                $stockBadge = '<span class="badge bg-danger">Out of Stock</span>';
-            } elseif ($row['stock'] <= 10) {
-                $stockBadge = '<span class="badge bg-warning text-dark">Low Stock</span>';
-            } else {
-                $stockBadge = '<span class="badge bg-success">In Stock</span>';
-            }
 
-            $image = $row['image'] 
-                ? "products/uploads/" . $row['image'] 
-                : "https://via.placeholder.com/50";
-        ?>
+/* ================= IMAGE ================= */
+$image = $row['image']
+? "products/uploads/" . $row['image']
+: "https://via.placeholder.com/50";
 
+/* ================= FIRST VARIANT PRICE ================= */
+$priceDisplay = '—';
+
+$stmt = $conn->prepare("
+    SELECT *
+    FROM product_variants
+    WHERE product_id = ?
+    ORDER BY id ASC
+    LIMIT 1
+");
+$stmt->bind_param("i", $row['id']);
+$stmt->execute();
+$firstVariant = $stmt->get_result()->fetch_assoc();
+
+/* ================= STOCK BADGE ================= */
+$stock = (int)($row['total_stock'] ?? 0);
+
+if ($stock <= 0) {
+    $stockBadge = '<span class="badge bg-danger">Out of Stock</span>';
+} elseif ($stock <= 10) {
+    $stockBadge = '<span class="badge bg-warning text-dark">Low Stock</span>';
+} else {
+    $stockBadge = '<span class="badge bg-success">In Stock</span>';
+}
+
+
+if ($firstVariant) {
+    $firstVariantType = $firstVariant['type'];
+
+    $stmt = $conn->prepare("
+        SELECT MIN(price) AS min_price, MAX(price) AS max_price
+        FROM product_variants
+        WHERE product_id = ? AND type = ?
+    ");
+    $stmt->bind_param("is", $row['id'], $firstVariantType);
+    $stmt->execute();
+    $range = $stmt->get_result()->fetch_assoc();
+
+    if (!empty($range['min_price'])) {
+        $priceDisplay = '₱' . number_format($range['min_price'], 2);
+
+        if ($range['min_price'] != $range['max_price']) {
+            $priceDisplay .= ' – ₱' . number_format($range['max_price'], 2);
+        }
+    }
+}
+?>
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center gap-3">
-                                    <img src="<?= $image ?>" class="rounded" width="50" height="50" />
+                                    <img src="<?= $image ?>" class="rounded" width="50" height="50">
                                     <div>
                                         <div class="fw-semibold"><?= htmlspecialchars($row['name']) ?></div>
                                         <small class="text-muted">SKU: <?= htmlspecialchars($row['sku']) ?></small>
@@ -98,42 +148,53 @@ $result = $conn->query($query);
 
                             <td><?= htmlspecialchars($row['category']) ?></td>
 
-                            <td>₱<?= number_format($row['price'], 2) ?></td>
+                            <td><?= $priceDisplay ?></td>
 
-                            <td><?= $row['stock'] ?></td>
-
-                            <td>
-                                <?= $row['status'] === 'Active'
-                    ? '<span class="badge bg-success">Active</span>'
-                    : '<span class="badge bg-secondary">Inactive</span>' ?>
-                            </td>
+                            <td><?= $stockBadge ?></td>
 
                             <td class="text-end">
-
-                                <button class="btn btn-sm btn-light" onclick="editProduct(<?= (int)$row['id'] ?>)">
-                                    <i class="bi bi-pencil"></i>
+                                <button
+                                    class="btn btn-sm <?= $row['status'] === 'Active' ? 'btn-success' : 'btn-secondary' ?>"
+                                    onclick="toggleProductStatus(<?= (int)$row['id'] ?>)"
+                                    title="<?= $row['status'] === 'Active' ? 'Deactivate' : 'Activate' ?>">
+                                    <i
+                                        class="bi <?= $row['status'] === 'Active' ? 'bi-check-circle' : 'bi-x-circle' ?>"></i>
+                                    <?= $row['status'] ?>
                                 </button>
+                                <script>
+                                function toggleProductStatus(productId) {
+                                    if (!confirm('Change product status?')) return;
+
+                                    fetch('products/toggle_product_status.php', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/x-www-form-urlencoded'
+                                            },
+                                            body: 'id=' + productId
+                                        })
+                                        .then(res => res.json())
+                                        .then(data => {
+                                            if (data.success) {
+                                                location.reload();
+                                            } else {
+                                                alert(data.message || 'Failed to update status');
+                                            }
+                                        });
+                                }
+                                </script>
 
 
                                 <button class="btn btn-sm btn-light text-danger"
-                                    onclick="deleteProduct(<?= $row['id'] ?>)">
+                                    onclick="deleteProduct(<?= (int)$row['id'] ?>)">
                                     <i class="bi bi-trash"></i>
                                 </button>
 
 
-
-                                <!-- PRINT BARCODE -->
-                                <button class="btn btn-sm btn-light text-primary"
-                                    onclick="printBarcode(<?= $row['id'] ?>)">
-                                    <i class="bi bi-upc-scan"></i>
-                                </button>
                                 <button class="btn btn-sm btn-outline-primary"
                                     onclick="viewProduct(<?= (int)$row['id'] ?>)">
                                     <i class="bi bi-eye"></i>
                                 </button>
-
                             </td>
-
                         </tr>
 
                         <?php endwhile; ?>
@@ -145,7 +206,6 @@ $result = $conn->query($query);
                         </tr>
                         <?php endif; ?>
                     </tbody>
-
                 </table>
             </div>
 
@@ -170,24 +230,6 @@ $result = $conn->query($query);
                 <div class="text-center py-5 text-muted">
                     Loading product...
                 </div>
-            </div>
-
-        </div>
-    </div>
-</div>
-
-<!-- ================= EDIT PRODUCT MODAL ================= -->
-<div class="modal fade" id="editProductModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-
-            <div class="modal-header" style="background: var(--brand-gradient); color: white;">
-                <h5 class="modal-title">Edit Product</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-
-            <div class="modal-body" id="editProductContent">
-                <div class="text-center py-5 text-muted">Loading...</div>
             </div>
 
         </div>
@@ -321,16 +363,6 @@ $result = $conn->query($query);
                         <h6 class="section-title">Base Pricing & Inventory</h6>
 
                         <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Base Price (₱)</label>
-                                <input type="number" name="price" class="form-control">
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">Base Stock</label>
-                                <input type="number" name="stock" class="form-control">
-                            </div>
-
                             <div class="col-md-4">
                                 <label class="form-label">Status</label>
                                 <select name="status" class="form-select" required>

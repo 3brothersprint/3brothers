@@ -41,7 +41,7 @@ http_response_code(404);
         font-weight: 800;
         line-height: 1;
         background: var(--brand-gradient);
-        -webkit-background-clip: text;
+        -background-clip: text;
         -webkit-text-fill-color: transparent;
     }
 

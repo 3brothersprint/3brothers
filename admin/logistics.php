@@ -172,8 +172,8 @@
 <script>
 function generateTracking() {
     let n = '';
-    for (let i = 0; i < 12; i++) n += Math.floor(Math.random() * 10);
-    return 'TBP' + n;
+    for (let i = 0; i < 15; i++) n += Math.floor(Math.random() * 10);
+    return n;
 }
 document.querySelectorAll('.tracking-input').forEach(i => i.value = generateTracking());
 

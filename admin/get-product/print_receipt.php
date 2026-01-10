@@ -83,7 +83,7 @@ $watermark = strtoupper($order['payment_method']) === 'COD' ? 'COD' : 'PAID';
     <meta charset="UTF-8">
     <style>
     @page {
-        size: A4 portrait;
+        size: 105mm 148mm;
         margin: 0;
     }
 
@@ -93,43 +93,22 @@ $watermark = strtoupper($order['payment_method']) === 'COD' ? 'COD' : 'PAID';
 
     html,
     body {
-        width: 8.27in;
-        height: 11.69in;
+        width: 105mm;
+        height: 148mm;
         margin: 0;
         padding: 0;
         font-family: Arial, Helvetica, sans-serif;
     }
 
-    /* PAGE */
-    .page {
+    /* AWB CONTAINER */
+    .awb {
         width: 100%;
         height: 100%;
-        padding: 8px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    /* WAYBILL (LANDSCAPE DESIGN) */
-    .waybill {
-        width: 100%;
-        height: 50%;
         border: 2px solid #000;
-        padding: 10px;
+        padding: 6mm;
         position: relative;
         display: flex;
         flex-direction: column;
-    }
-
-    /* COPY LABEL */
-    .copy-label {
-        position: absolute;
-        top: 6px;
-        right: 10px;
-        border: 2px solid #000;
-        font-size: 14px;
-        font-weight: 900;
-        padding: 3px 12px;
     }
 
     /* WATERMARK */
@@ -139,7 +118,7 @@ $watermark = strtoupper($order['payment_method']) === 'COD' ? 'COD' : 'PAID';
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 90px;
+        font-size: 48px;
         font-weight: 900;
         opacity: 0.06;
         transform: rotate(-25deg);
@@ -148,215 +127,142 @@ $watermark = strtoupper($order['payment_method']) === 'COD' ? 'COD' : 'PAID';
 
     /* HEADER */
     .header {
-        border-bottom: 3px solid #000;
-        padding-bottom: 6px;
-    }
-
-    .header-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        border-bottom: 2px solid #000;
+        padding-bottom: 4px;
+        margin-bottom: 4px;
     }
 
     .logo {
-        font-size: 26px;
-        font-weight: 900;
-    }
-
-    .hub {
-        border: 4px solid #000;
-        padding: 6px 18px;
-        font-size: 24px;
+        font-size: 18px;
         font-weight: 900;
     }
 
     /* BARCODE */
     .barcode {
         text-align: center;
-        margin: 6px 0;
+        margin: 4px 0;
+    }
+
+    .barcode img {
+        width: 100%;
+        height: 40px;
     }
 
     .order-no {
         text-align: center;
-        font-size: 22px;
+        font-size: 14px;
         font-weight: 900;
+        margin-bottom: 4px;
     }
 
-    /* BODY ROWS */
+    /* BLOCKS */
     .block {
-        border-bottom: 2px solid #000;
-        padding: 6px 0;
+        border-bottom: 1px solid #000;
+        padding: 4px 0;
     }
 
     .title {
-        font-size: 16px;
+        font-size: 11px;
         font-weight: 900;
     }
 
     .big {
-        font-size: 18px;
+        font-size: 13px;
         font-weight: 700;
     }
 
     .info {
-        font-size: 15px;
+        font-size: 11px;
     }
 
     /* FOOTER */
     .footer {
         display: flex;
         justify-content: space-between;
+        align-items: flex-end;
         margin-top: auto;
     }
 
     .qr img {
-        width: 110px;
-        height: 110px;
+        width: 70px;
+        height: 70px;
     }
 
     /* SCAN LOG */
     .scan-log table {
         border-collapse: collapse;
+        font-size: 10px;
     }
 
     .scan-log td {
         border: 1px solid #000;
-        padding: 6px;
+        padding: 3px;
         text-align: center;
-        font-size: 14px;
     }
     </style>
 
+
 </head>
 
-<body onload="window.print()">
+<body>
 
-    <div class="page">
+    <div class="awb">
 
-        <!-- SELLER COPY -->
-        <div class="waybill">
-            <div class="copy-label">SELLER COPY</div>
-            <div class="watermark"><?= $watermark ?></div>
+        <div class="watermark"><?= $watermark ?></div>
 
-            <div class="header">
-                <div class="header-row">
-                    <div class="logo">3BPS&ES</div>
-                </div>
-            </div>
-
-            <div class="barcode">
-                <img src="data:image/png;base64,<?= $barcode ?>">
-            </div>
-            <div class="order-no">
-                <?= htmlspecialchars($barcodeValue) ?><br>
-            </div>
-
-
-            <div class="block">
-                <div class="title">BUYER</div>
-                <div class="big"><?= htmlspecialchars($order['recipient_name']) ?></div>
-                <div class="info"><?= nl2br(htmlspecialchars($order['delivery_address'])) ?></div>
-                <div class="big"><?= htmlspecialchars($order['recipient_phone']) ?></div>
-            </div>
-
-            <div class="block">
-                <div class="title">SELLER</div>
-                <div class="big">Print Shop Name</div>
-                <div class="info">123 Printing Street, City</div>
-            </div>
-
-            <div class="block info">
-                <strong>PAYMENT:</strong> <?= strtoupper($order['payment_method']) ?><br>
-                <strong>TOTAL:</strong> ₱<?= number_format($order['total_amount'], 2) ?><br>
-                <strong>DATE:</strong> <?= date("m/d/Y", strtotime($order['created_at'])) ?>
-            </div>
-
-            <div class="footer">
-                <div class="scan-log">
-                    <strong>COURIER SCAN LOG</strong>
-                    <table>
-                        <tr>
-                            <td>Picked Up</td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td>In Transit</td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td>Delivered</td>
-                            <td></td>
-                        </tr>
-                    </table>
-                </div>
-                <div class="qr">
-                    <img src="data:image/png;base64,<?= $qrBase64 ?>">
-                </div>
-            </div>
+        <div class="header">
+            <div class="logo">3BPS&ES</div>
         </div>
 
-        <!-- CUSTOMER COPY -->
-        <div class="waybill">
-            <div class="copy-label">CUSTOMER COPY</div>
-            <div class="watermark"><?= $watermark ?></div>
+        <div class="barcode">
+            <img src="data:image/png;base64,<?= $barcode ?>">
+        </div>
 
-            <!-- SAME CONTENT -->
-            <?php /* duplicate content intentionally for print consistency */ ?>
-            <div class="header">
-                <div class="header-row">
-                    <div class="logo">3BPS&ES</div>
-                </div>
+        <div class="order-no">
+            <?= htmlspecialchars($barcodeValue) ?>
+        </div>
+
+        <div class="block">
+            <div class="title">BUYER</div>
+            <div class="big"><?= htmlspecialchars($order['recipient_name']) ?></div>
+            <div class="info"><?= nl2br(htmlspecialchars($order['delivery_address'])) ?></div>
+            <div class="big"><?= htmlspecialchars($order['recipient_phone']) ?></div>
+        </div>
+
+        <div class="block">
+            <div class="title">SELLER</div>
+            <div class="big">Print Shop Name</div>
+            <div class="info">123 Printing Street, City</div>
+        </div>
+
+        <div class="block info">
+            <strong>PAYMENT:</strong> <?= strtoupper($order['payment_method']) ?><br>
+            <strong>TOTAL:</strong> ₱<?= number_format($order['total_amount'], 2) ?><br>
+            <strong>DATE:</strong> <?= date("m/d/Y", strtotime($order['created_at'])) ?>
+        </div>
+
+        <div class="footer">
+            <div class="scan-log">
+                <strong>SCAN</strong>
+                <table>
+                    <tr>
+                        <td>Pickup</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Transit</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Delivered</td>
+                        <td></td>
+                    </tr>
+                </table>
             </div>
 
-            <div class="barcode">
-                <img src="data:image/png;base64,<?= $barcode ?>">
+            <div class="qr">
+                <img src="data:image/png;base64,<?= $qrBase64 ?>">
             </div>
-            <div class="order-no">
-                <?= htmlspecialchars($barcodeValue) ?><br>
-            </div>
-
-            <div class="block">
-                <div class="title">BUYER</div>
-                <div class="big"><?= htmlspecialchars($order['recipient_name']) ?></div>
-                <div class="info"><?= nl2br(htmlspecialchars($order['delivery_address'])) ?></div>
-                <div class="big"><?= htmlspecialchars($order['recipient_phone']) ?></div>
-            </div>
-
-            <div class="block">
-                <div class="title">SELLER</div>
-                <div class="big">Print Shop Name</div>
-                <div class="info">123 Printing Street, City</div>
-            </div>
-
-            <div class="block info">
-                <strong>PAYMENT:</strong> <?= strtoupper($order['payment_method']) ?><br>
-                <strong>TOTAL:</strong> ₱<?= number_format($order['total_amount'], 2) ?><br>
-                <strong>DATE:</strong> <?= date("m/d/Y", strtotime($order['created_at'])) ?>
-            </div>
-
-            <div class="footer">
-                <div class="scan-log">
-                    <strong>COURIER SCAN LOG</strong>
-                    <table>
-                        <tr>
-                            <td>Picked Up</td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td>In Transit</td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td>Delivered</td>
-                            <td></td>
-                        </tr>
-                    </table>
-                </div>
-                <div class="qr">
-                    <img src="data:image/png;base64,<?= $qrBase64 ?>">
-                </div>
-            </div>
-            <?= ob_get_clean(); ?>
         </div>
 
     </div>
