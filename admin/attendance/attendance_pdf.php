@@ -4,10 +4,20 @@ require 'vendor/autoload.php';
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
+// Set timezone to Philippines
+date_default_timezone_set('Asia/Manila');
 
-$month = $_GET['month'] ?? date('Y-m-d');
+// Now all date() and time() functions will use PH time
+echo date('h:i A');  // Will print 12:48 PM instead of 05:47 AM
 
-$rows = $conn->query("
+// Month parameter, default to current month
+$month = $_GET['month'] ?? date('Y-m');
+
+// Sanitize input
+$month = date('Y-m', strtotime($month));
+
+// Fetch attendance data
+$stmt = $conn->prepare("
     SELECT 
         u.full_name,
         a.login_date,
@@ -16,15 +26,19 @@ $rows = $conn->query("
         a.status
     FROM admin_attendance a
     JOIN users u ON u.id = a.admin_id
-    WHERE DATE_FORMAT(a.login_date, '%Y-%m') = '$month'
+    WHERE DATE_FORMAT(a.login_date, '%Y-%m') = ?
     ORDER BY a.login_date, u.full_name
 ");
+$stmt->bind_param("s", $month);
+$stmt->execute();
+$rows = $stmt->get_result();
 
+// Start HTML buffer
 ob_start();
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -39,7 +53,6 @@ ob_start();
         color: #000;
     }
 
-    /* WATERMARK */
     .watermark {
         position: fixed;
         top: 45%;
@@ -50,7 +63,6 @@ ob_start();
         z-index: -1;
     }
 
-    /* HEADER */
     .header {
         border-bottom: 2px solid #000;
         padding-bottom: 10px;
@@ -76,13 +88,11 @@ ob_start();
         color: #555;
     }
 
-    /* META */
     .meta {
         margin-bottom: 10px;
         font-size: 10px;
     }
 
-    /* TABLE */
     table.report {
         width: 100%;
         border-collapse: collapse;
@@ -103,15 +113,15 @@ ob_start();
 
     .status-late {
         font-weight: bold;
-        color: #000;
-        border-left: 4px solid #000;
+        color: #d9534f;
+        border-left: 4px solid #d9534f;
     }
 
     .status-ontime {
         font-weight: bold;
+        color: #198754;
     }
 
-    /* FOOTER */
     .footer {
         margin-top: 40px;
     }
@@ -172,12 +182,12 @@ ob_start();
         <tbody>
             <?php while ($r = $rows->fetch_assoc()): ?>
             <tr>
-                <td style="text-align:left"><?= htmlspecialchars($r['full_name']) ?></td>
+                <td style="text-align:left"><?= htmlspecialchars($r['full_name'], ENT_QUOTES, 'UTF-8') ?></td>
                 <td><?= date('M d, Y', strtotime($r['login_date'])) ?></td>
                 <td><?= $r['login_time'] ? date('h:i A', strtotime($r['login_time'])) : '-' ?></td>
                 <td><?= $r['logout_time'] ? date('h:i A', strtotime($r['logout_time'])) : '-' ?></td>
                 <td class="<?= $r['status'] === 'Late' ? 'status-late' : 'status-ontime' ?>">
-                    <?= strtoupper($r['status']) ?>
+                    <?= htmlspecialchars(strtoupper($r['status']), ENT_QUOTES, 'UTF-8') ?>
                 </td>
                 <td></td>
             </tr>
@@ -214,15 +224,14 @@ ob_start();
 $html = ob_get_clean();
 
 $options = new Options();
-$options->set('defaultFont', 'DejaVu Sans');
+$options->set('defaultFont', 'DejaVu Sans'); // UTF-8 supported font
 $options->set('isRemoteEnabled', true);
+$options->set('chroot', realpath('../')); // optional for security
 
 $dompdf = new Dompdf($options);
-$dompdf->loadHtml($html);
+$dompdf->loadHtml($html, 'UTF-8'); // explicitly set UTF-8
 $dompdf->setPaper('Letter', 'portrait');
 $dompdf->render();
 
-$dompdf->stream(
-    "Admin Attendance - " . $month . ".pdf",
-    ["Attachment" => true]
-);
+// Stream PDF to browser
+$dompdf->stream("Admin Attendance " . $month . ".pdf", ["Attachment" => true]);

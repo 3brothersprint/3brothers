@@ -62,8 +62,7 @@ if (!empty($_POST['variant_type'])) {
         $v_stock = $_POST['variant_stock'][$i];
 
         $variant_barcode =
-            "VAR-" . str_pad($product_id, 6, "0", STR_PAD_LEFT)
-            . "-" . strtoupper(preg_replace('/[^A-Z0-9]/', '', substr($value, 0, 5)));
+            rand(100000000000000, 999999999999999);
 
         // Save variant barcode image
         file_put_contents(

@@ -12,16 +12,6 @@ $timeNow = date('H:i:s');
 $admin_id = $_SESSION['admin_id'];
 
 /* ================= ATTENDANCE LOG ================= */
-/* ================= ACTIVITY TRACKING ================= */
-
-$activityUpdate = $conn->prepare("
-    UPDATE admin_attendance
-    SET last_activity = NOW()
-    WHERE admin_id = ? AND login_date = ?
-");
-$activityUpdate->bind_param("is", $admin_id, $today);
-$activityUpdate->execute();
-
 $statusStmt = $conn->prepare("
     SELECT last_activity
     FROM admin_attendance
@@ -149,11 +139,6 @@ $stats = [];
 $stats['products'] = $conn->query("SELECT COUNT(*) total FROM products")
     ->fetch_assoc()['total'];
 
-/* Low stock */
-$stats['low_stock'] = $conn->query("
-    SELECT COUNT(*) total FROM products WHERE stock <= 5
-")->fetch_assoc()['total'];
-
 /* Pending orders */
 $stats['pending_orders'] = $conn->query("
     SELECT COUNT(*) AS total
@@ -193,7 +178,7 @@ $stats['today_jobs'] = $conn->query("
             <a href="attendance/export_excel.php" class="btn btn-success btn-sm">
                 <i class="bi bi-file-earmark-excel"></i> Export Excel
             </a>
-            <a href="export_pdf.php" class="btn btn-danger btn-sm">
+            <a href="attendance/attendance_pdf.php" class="btn btn-danger btn-sm">
                 <i class="bi bi-file-earmark-pdf"></i> Export PDF
             </a>
             <a href="attendance/print_sheet.php" target="_blank" class="btn btn-dark btn-sm">
@@ -231,21 +216,15 @@ $stats['today_jobs'] = $conn->query("
                 </div>
             </div>
         </div>
+
         <div class="col-md-4">
             <div class="card shadow-sm border-0 rounded-4">
                 <div class="card-body">
                     <h6 class="fw-semibold mb-2">
                         <i class="bi bi-activity"></i> Activity Status
                     </h6>
-
-                    <?php if ($isOnline): ?>
-                    <span class="badge bg-success">Active Now</span>
-                    <?php else: ?>
-                    <span class="badge bg-secondary">Inactive</span>
-                    <div class="small text-muted mt-1">
-                        <?= $offlineMinutes ?> mins offline
-                    </div>
-                    <?php endif; ?>
+                    <span id="activityBadge" class="badge bg-secondary">Checking...</span>
+                    <div id="activityText" class="small text-muted mt-1"></div>
                 </div>
             </div>
         </div>
@@ -270,16 +249,8 @@ $stats['today_jobs'] = $conn->query("
                     <h6 class="fw-semibold mb-2">
                         <i class="bi bi-shield-check"></i> System Status
                     </h6>
-                    <span class="badge <?= $isOnline ? 'bg-success' : 'bg-secondary' ?>">
-                        <?= $isOnline ? 'Online' : 'Offline' ?>
-                    </span>
-
-                    <?php if (!$isOnline && $offlineMinutes > 0): ?>
-                    <div class="small text-muted mt-1">
-                        Offline for <?= $offlineMinutes ?> min
-                    </div>
-                    <?php endif; ?>
-
+                    <span id="systemBadge" class="badge bg-secondary">Checking...</span>
+                    <div id="systemText" class="small text-muted mt-1"></div>
                 </div>
             </div>
         </div>
@@ -299,43 +270,13 @@ $stats['today_jobs'] = $conn->query("
                         <th>Last Activity</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <?php while ($row = $admins->fetch_assoc()): ?>
-                    <?php
-                    $online = false;
-                    $offlineMin = 0;
-
-                    if ($row['last_activity']) {
-                        $diff = (time() - strtotime($row['last_activity'])) / 60;
-                        if ($diff <= 5) {
-                            $online = true;
-                        } else {
-                            $offlineMin = floor($diff);
-                        }
-                    }
-                ?>
-                    <tr>
-                        <td class="fw-semibold"><?= htmlspecialchars($row['full_name']) ?></td>
-                        <td>
-                            <?php if ($online): ?>
-                            <span class="badge bg-success">
-                                <i class="bi bi-circle-fill"></i> Online
-                            </span>
-                            <?php else: ?>
-                            <span class="badge bg-secondary">
-                                <i class="bi bi-circle"></i> Offline
-                            </span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="small text-muted">
-                            <?= $online ? 'Active now' : ($offlineMin ? "$offlineMin mins ago" : '—') ?>
-                        </td>
-                    </tr>
-                    <?php endwhile; ?>
-                </tbody>
+                <tbody id="adminLiveTable"></tbody>
             </table>
         </div>
     </div>
+
+
+
     <div class="col-md-4">
         <div class="card shadow-sm border-0 rounded-4">
             <div class="card-body">
@@ -425,15 +366,6 @@ $stats['today_jobs'] = $conn->query("
             </div>
         </div>
 
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0 rounded-4 text-center">
-                <div class="card-body">
-                    <i class="bi bi-exclamation-triangle fs-3 text-danger"></i>
-                    <h4 class="fw-bold mt-2"><?= $stats['low_stock'] ?></h4>
-                    <small class="text-muted">Low Stock</small>
-                </div>
-            </div>
-        </div>
 
         <div class="col-md-3">
             <div class="card shadow-sm border-0 rounded-4 text-center">
@@ -468,11 +400,7 @@ $stats['today_jobs'] = $conn->query("
     font-family: 'Courier New', monospace;
 }
 </style>
-<script>
-setInterval(() => {
-    fetch('update_activity.php');
-}, 30000);
-</script>
+
 <script>
 function updateClock() {
     const now = new Date();
@@ -489,6 +417,79 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
 
+    function heartbeat() {
+        fetch('ajax/update_activity.php')
+            .catch(err => console.error('Heartbeat error:', err));
+    }
+
+    function refreshStatus() {
+        fetch('ajax/get_activity_status.php')
+            .then(res => res.json())
+            .then(data => {
+
+                const me = <?= (int)$admin_id ?>;
+                const table = document.getElementById('adminLiveTable');
+
+                table.innerHTML = '';
+
+                data.forEach(admin => {
+
+                    if (admin.id === me) {
+                        const badge = document.getElementById('activityBadge');
+                        const text = document.getElementById('activityText');
+                        const sys = document.getElementById('systemBadge');
+                        const sysT = document.getElementById('systemText');
+
+                        if (admin.online) {
+                            badge.className = 'badge bg-success';
+                            badge.textContent = 'Active Now';
+                            text.textContent = '';
+
+                            sys.className = 'badge bg-success';
+                            sys.textContent = 'Online';
+                            sysT.textContent = '';
+                        } else {
+                            badge.className = 'badge bg-secondary';
+                            badge.textContent = 'Inactive';
+                            text.textContent = admin.offlineMinutes + ' mins offline';
+
+                            sys.className = 'badge bg-secondary';
+                            sys.textContent = 'Offline';
+                            sysT.textContent = 'Offline for ' + admin.offlineMinutes + ' min';
+                        }
+                    }
+
+                    table.innerHTML += `
+                        <tr>
+                            <td class="fw-semibold">${admin.name}</td>
+                            <td>
+                                <span class="badge ${admin.online ? 'bg-success' : 'bg-secondary'}">
+                                    ${admin.online ? 'Online' : 'Offline'}
+                                </span>
+                            </td>
+                            <td class="small text-muted">
+                                ${admin.online ? 'Active now' : (admin.offlineMinutes ? admin.offlineMinutes + ' mins ago' : '—')}
+                            </td>
+                        </tr>
+                    `;
+                });
+            })
+            .catch(err => console.error('Status error:', err));
+    }
+
+    // run immediately
+    heartbeat();
+    refreshStatus();
+
+    // repeat every 30 seconds
+    setInterval(() => {
+        heartbeat();
+        refreshStatus();
+    }, 30000);
+});
+</script>
 
 <?php include 'includes/footer.php'; ?>

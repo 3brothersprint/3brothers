@@ -5,7 +5,7 @@ require "../admin/database/db.php";
 $user_id = $_SESSION['user_id'] ?? null;
 
 if (!$user_id) {
-    header("Location: ../login.php");
+    header("Location: ../auth/auth.php");
     exit;
 }
 

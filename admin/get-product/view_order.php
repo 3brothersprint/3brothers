@@ -90,7 +90,7 @@ $allowedStatuses = [
 
             <div class="col-md-6">
                 <label class="form-label fw-semibold">Status</label>
-                <select class="form-select" id="orderStatus">
+                <select class="form-select" id="orderStatus" <?= $order['status'] === 'To Transit' ? 'disabled' : '' ?>>
                     <option value="">-- Select Status --</option>
                     <?php foreach ($allowedStatuses as $status): ?>
                     <option value="<?= $status ?>" <?= $order['status'] === $status ? 'selected' : '' ?>>
@@ -102,7 +102,7 @@ $allowedStatuses = [
 
             <div class="col-md-6">
                 <label class="form-label fw-semibold">Remark</label>
-                <select class="form-select" id="orderRemark">
+                <select class="form-select" id="orderRemark" <?= $order['status'] === 'To Transit' ? 'disabled' : '' ?>>
                     <option value="">-- Select Remark --</option>
                     <option value="Your order has been prepared">Your order has been prepared</option>
                     <option value="Order has been packed">Order has been packed</option>
@@ -114,13 +114,15 @@ $allowedStatuses = [
             </div>
 
             <div class="col-12">
-                <button class="btn btn-primary w-100" onclick="updateOrderStatus(<?= (int)$order['id'] ?>)">
+                <button class="btn btn-primary w-100" onclick="updateOrderStatus(<?= (int)$order['id'] ?>)"
+                    <?= $order['status'] === 'To Transit' ? 'disabled' : '' ?>>
                     <i class="bi bi-arrow-repeat"></i> Update Status
                 </button>
             </div>
 
         </div>
     </div>
+
 
     <div class="col-12">
         <strong>Delivery Address:</strong>

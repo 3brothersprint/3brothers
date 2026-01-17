@@ -2,19 +2,22 @@
 require '../database/db.php';
 
 /* ===========================
-   FETCH ALL INVENTORY
+   FETCH ALL INVENTORY (BY VARIANT)
    =========================== */
 $result = $conn->query("
     SELECT 
         p.product_no,
-        p.name,
-        p.sku,
-        p.stock,
+        p.name AS product_name,
+        p.sku AS product_sku,
+        v.id AS variant_id,
+        v.value AS variant_name,
+        v.stock AS variant_stock,
         COALESCE(i.low_stock_threshold, 0) AS low_stock_threshold,
         i.updated_at
-    FROM products p
+    FROM product_variants v
+    JOIN products p ON p.id = v.product_id
     LEFT JOIN inventory i ON i.product_id = p.id
-    ORDER BY p.name ASC
+    ORDER BY p.name ASC, v.value ASC
 ");
 
 if (!$result || $result->num_rows === 0) {
@@ -34,7 +37,6 @@ if (!$result || $result->num_rows === 0) {
         margin: 20mm;
     }
 
-    /* FORCE PRINT COLORS */
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -50,7 +52,6 @@ if (!$result || $result->num_rows === 0) {
         width: 100%;
     }
 
-    /* HEADER */
     .header {
         display: flex;
         justify-content: space-between;
@@ -82,7 +83,6 @@ if (!$result || $result->num_rows === 0) {
         color: #555;
     }
 
-    /* TABLE */
     table {
         width: 100%;
         border-collapse: collapse;
@@ -120,7 +120,6 @@ if (!$result || $result->num_rows === 0) {
         font-weight: bold;
     }
 
-    /* FOOTER */
     .footer {
         margin-top: 40px;
         display: flex;
@@ -152,7 +151,6 @@ if (!$result || $result->num_rows === 0) {
         <!-- HEADER -->
         <div class="header">
             <div class="logo">
-                <!-- 🔴 CHANGE LOGO PATH -->
                 <img src="../../assets/Logo.png" alt="Company Logo">
                 <h2>3 BROTHERS PRINT SERVICES & EDUCATIONAL SUPPLIES</h2>
             </div>
@@ -169,7 +167,8 @@ if (!$result || $result->num_rows === 0) {
                 <tr>
                     <th>Product No</th>
                     <th>Product Name</th>
-                    <th>SKU</th>
+                    <th>Variant</th>
+                    <th>Product SKU</th>
                     <th>Stock</th>
                     <th>Low Stock Alert</th>
                     <th>Last Updated</th>
@@ -179,11 +178,12 @@ if (!$result || $result->num_rows === 0) {
                 <?php while ($row = $result->fetch_assoc()): ?>
                 <tr>
                     <td><?= htmlspecialchars($row['product_no']) ?></td>
-                    <td><?= htmlspecialchars($row['name']) ?></td>
-                    <td><?= htmlspecialchars($row['sku']) ?></td>
+                    <td><?= htmlspecialchars($row['product_name']) ?></td>
+                    <td><?= htmlspecialchars($row['variant_name']) ?></td>
+                    <td><?= htmlspecialchars($row['product_sku']) ?></td>
 
-                    <td class="stock <?= $row['stock'] <= $row['low_stock_threshold'] ? 'low' : '' ?>">
-                        <?= (int)$row['stock'] ?>
+                    <td class="stock <?= $row['variant_stock'] <= $row['low_stock_threshold'] ? 'low' : '' ?>">
+                        <?= (int)$row['variant_stock'] ?>
                     </td>
 
                     <td class="text-center">

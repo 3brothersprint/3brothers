@@ -4,7 +4,7 @@ include '../database/db.php';
 $id = (int) $_GET['id'];
 
 $variant = $conn->query("
-    SELECT v.barcode, v.value, p.name
+    SELECT v.barcode, v.value, v.price, p.name
     FROM product_variants v
     JOIN products p ON p.id = v.product_id
     WHERE v.id = $id
@@ -16,6 +16,7 @@ if (!$variant) {
 
 $barcode = $variant['barcode'];
 $name    = $variant['name'];
+$price   = number_format($variant['price'], 2);
 $value   = $variant['value'];
 ?>
 
@@ -27,8 +28,8 @@ $value   = $variant['value'];
 
     <style>
     @page {
-        size: A4;
-        margin: 6mm;
+        size: 3in 2in;
+        margin: 0;
     }
 
     body {
@@ -37,52 +38,62 @@ $value   = $variant['value'];
         background: #fff;
     }
 
-    /* A4 GRID */
     .sheet {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 6mm;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0;
+        /* no spacing between labels */
+        padding: 0;
     }
 
-    /* GROCERY LABEL */
     .label {
-        width: 50mm;
-        height: 32mm;
-        padding: 2mm;
+        width: 3in;
+        height: 2in;
+        padding: 0;
         box-sizing: border-box;
+        border: 1px solid #000;
         text-align: center;
-        background: #fff;
-    }
-
-    .barcode {
-        width: 100%;
-        height: 18mm;
-        object-fit: contain;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
 
     .name {
-        font-size: 10px;
-        font-weight: 700;
-        line-height: 1.1;
-        margin-top: 1mm;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-weight: bold;
+        font-size: 16px;
+        /* bigger */
+        text-transform: uppercase;
+        margin: 2px 0 0 0;
     }
 
-    .variant {
-        font-size: 9px;
-        color: #333;
-        margin-top: 0.5mm;
+    .barcode img {
+        width: 100%;
+        height: 50px;
+        object-fit: contain;
+        margin: 0;
     }
 
     .code {
-        font-size: 9px;
-        letter-spacing: 1.5px;
-        margin-top: 0.5mm;
+        font-size: 10px;
+        margin: 0;
+    }
+
+    .price {
+        font-weight: bold;
+        font-size: 14px;
+        /* bigger */
+        margin: 2px 0;
     }
 
     @media print {
+        body {
+            margin: 0;
+        }
+
+        .sheet {
+            gap: 0;
+        }
+
         .label {
             page-break-inside: avoid;
         }
@@ -95,10 +106,12 @@ $value   = $variant['value'];
     <div class="sheet">
         <?php for ($i = 0; $i < 24; $i++): ?>
         <div class="label">
-            <img class="barcode" src="barcodes/<?= htmlspecialchars($barcode) ?>.png">
             <div class="name"><?= htmlspecialchars($name) ?></div>
-            <div class="variant"><?= htmlspecialchars($value) ?></div>
-            <div class="code"><?= htmlspecialchars($barcode) ?></div>
+            <div class="barcode">
+                <img src="barcodes/<?= $barcode ?>.png" alt="<?= $barcode ?>">
+                <div class="code"><?= $barcode ?></div>
+            </div>
+            <div class="price">₱<?= $price ?></div>
         </div>
         <?php endfor; ?>
     </div>

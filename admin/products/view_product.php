@@ -32,23 +32,6 @@ $variants = $conn->query("
 </div>
 
 <hr>
-
-<!-- PRODUCT BARCODE -->
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <div>
-        <strong>Barcode:</strong> <?= $product['barcode'] ?>
-    </div>
-
-    <button class="btn btn-sm btn-outline-primary" onclick="printBarcode(<?= $product['id'] ?>)">
-        <i class="bi bi-printer"></i> Print
-    </button>
-</div>
-
-<img src="/print/admin/products/barcodes/<?= $product['barcode'] ?>.png" class="img-fluid mb-3" style="max-width:250px">
-
-
-<hr>
-
 <h6>Status of Product</h6>
 <ul class="list-group mb-3">
     <li class="list-group-item align-items-center">
